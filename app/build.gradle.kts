@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.kotlinx.coroutines.android)
     implementation(project(":core-tabs"))
     implementation(project(":core-privacy"))

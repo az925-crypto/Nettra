@@ -36,6 +36,7 @@ import com.zaaam.nettra.tabs.TabManager
 import com.zaaam.nettra.webview.JsConsoleBridge
 import com.zaaam.nettra.webview.NetTraWebViewClient
 import com.zaaam.nettra.webview.ThrottlingProfile
+import kotlinx.coroutines.launch
 
 private val VoidInk = Color(0xFF0B0F14)
 private val Ledger = Color(0xFFF2F4F7)
@@ -143,7 +144,7 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
             if (current != null) {
                 val tabId = current.entity.id
                 val isPrivate = current.entity.isPrivate
-                val webViewClient = remember(tabId, customBlocklist) {
+                val client = remember(tabId, customBlocklist) {
                     NetTraWebViewClient(
                         tabId = tabId,
                         tabManager = tabManager,
@@ -168,7 +169,7 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
                         addJavascriptInterface(JsConsoleBridge(tabId, inspector), "NetTraConsole")
                         CookiePolicy.applyToWebView(this)
                         webChromeClient = WebChromeClient()
-                        webViewClient = webViewClient
+                        webViewClient = client
                         val initialUrl = current.entity.url.takeIf { it.isNotBlank() } ?: "https://example.com"
                         if (isUrlAllowed(initialUrl)) {
                             loadUrl(initialUrl)
