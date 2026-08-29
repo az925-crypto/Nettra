@@ -30,7 +30,7 @@ object HarExporter {
     }
     private fun maskBody(body: String?): String? {
         if (body == null) return null
-        var masked = body
+        var masked: String = body
         val sensitive = listOf("password","token","secret","api_key","apikey","api-key","auth","authorization","access_token","refresh_token")
         for (key in sensitive) {
             masked = masked.replace(Regex("(?i)\"$key\"\\s*:\\s*\"[^\"]*\""), "\"$key\":\"***\"")
