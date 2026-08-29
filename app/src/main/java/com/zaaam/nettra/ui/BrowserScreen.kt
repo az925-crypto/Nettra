@@ -119,8 +119,8 @@ private fun NewTabStrip(tabManager: TabManager) {
 }
 
 // clickable tanpa ripple helper
-private fun Modifier.clickableWithoutRipple(onClick: () -> Unit): Modifier = this.then(
-    clickable(interactionSource = MutableInteractionSource(), indication = null, onClick = onClick)
+private fun Modifier.clickableWithoutRipple(onClick: () -> Unit): Modifier = clickable(
+    interactionSource = MutableInteractionSource(), indication = null, onClick = onClick
 )
 
 // ---------- Address Pill ----------
