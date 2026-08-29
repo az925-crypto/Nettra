@@ -1,6 +1,7 @@
 package com.zaaam.nettra
 
 import android.app.Application
+import android.os.Build
 import android.webkit.WebView
 import com.zaaam.nettra.tabs.TabManager
 import com.zaaam.nettra.inspector.NetworkInspector
@@ -13,6 +14,8 @@ class NetTraApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        try { WebView.setDataDirectorySuffix("nettra") } catch (_: Exception) {}
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try { WebView.setDataDirectorySuffix("nettra") } catch (_: Exception) {}
+        }
     }
 }
