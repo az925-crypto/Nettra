@@ -3,6 +3,7 @@ package com.zaaam.nettra.inspector
 import com.zaaam.nettra.inspector.model.CapturedRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -19,7 +20,7 @@ object ReplayEngine {
         // Validate URL before use
         val trimmed = rawUrl.trim()
         require(trimmed.isNotEmpty()) { "URL must not be blank" }
-        val httpUrl = okhttp3.HttpUrl.Companion.toHttpUrlOrNull(trimmed) ?: throw IllegalArgumentException("Invalid URL: $trimmed")
+        val httpUrl = trimmed.toHttpUrlOrNull() ?: throw IllegalArgumentException("Invalid URL: $trimmed")
         val url = httpUrl.toString()
         // Resolve headers: prefer overrides, else use originalRequestHeaders to unmask, fallback to masked
         val baseHeaders: Map<String,String> = when {
