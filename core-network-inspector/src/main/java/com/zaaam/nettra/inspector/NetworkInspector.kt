@@ -4,6 +4,9 @@ import com.zaaam.nettra.inspector.model.CapturedRequest
 import com.zaaam.nettra.inspector.model.ResourceType
 import com.zaaam.nettra.inspector.model.TimingInfo
 import com.zaaam.nettra.inspector.model.classifyResource
+import java.nio.ByteBuffer
+import java.nio.CharBuffer
+import java.nio.charset.CodingErrorAction
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -18,7 +21,7 @@ class NetworkInspector {
 
     private val _logsFlow = ConcurrentHashMap<String, kotlinx.coroutines.flow.MutableStateFlow<List<CapturedRequest>>>()
     private fun getOrCreateFlow(tabId: String): kotlinx.coroutines.flow.MutableStateFlow<List<CapturedRequest>> =
-        _logsFlow.getOrPut(tabId) { kotlinx.coroutines.flow.MutableStateFlow(emptyList()) }
+        _logsFlow.computeIfAbsent(tabId) { kotlinx.coroutines.flow.MutableStateFlow(emptyList()) }
 
     fun getLogFlow(tabId: String): kotlinx.coroutines.flow.StateFlow<List<CapturedRequest>> = getOrCreateFlow(tabId)
 
@@ -33,15 +36,25 @@ class NetworkInspector {
     // Phase2: console logs per tab
     private val consoleLogs = ConcurrentHashMap<String, MutableList<com.zaaam.nettra.inspector.model.ConsoleEntry>>()
     private val _consoleFlow = ConcurrentHashMap<String, kotlinx.coroutines.flow.MutableStateFlow<List<com.zaaam.nettra.inspector.model.ConsoleEntry>>>()
-    private fun getOrCreateConsoleFlow(tabId: String) = _consoleFlow.getOrPut(tabId) { kotlinx.coroutines.flow.MutableStateFlow(emptyList()) }
+    private fun getOrCreateConsoleFlow(tabId: String) = _consoleFlow.computeIfAbsent(tabId) { kotlinx.coroutines.flow.MutableStateFlow(emptyList()) }
     fun getConsoleFlow(tabId: String): kotlinx.coroutines.flow.StateFlow<List<com.zaaam.nettra.inspector.model.ConsoleEntry>> = getOrCreateConsoleFlow(tabId)
     fun addConsoleLog(tabId: String, entry: com.zaaam.nettra.inspector.model.ConsoleEntry) {
-        val list = consoleLogs.getOrPut(tabId) { mutableListOf() }
+        val list = consoleLogs.computeIfAbsent(tabId) { mutableListOf() }
         synchronized(list) { if (list.size >= 200) list.removeAt(0); list.add(entry) }
         getOrCreateConsoleFlow(tabId).value = synchronized(list) { list.toList() }
     }
     fun getConsoleLog(tabId: String): List<com.zaaam.nettra.inspector.model.ConsoleEntry> = consoleLogs[tabId]?.toList() ?: emptyList()
-    fun clearConsole(tabId: String) { consoleLogs[tabId]?.clear(); getOrCreateConsoleFlow(tabId).value = emptyList() }
+    fun clearConsole(tabId: String) {
+        consoleLogs[tabId]?.let { list -> synchronized(list) { list.clear() } }
+        _consoleFlow[tabId]?.value = emptyList()
+    }
+    fun removeTabFlows(tabId: String) {
+        // Called from TabManager.closeTab to prevent leak of _logsFlow/_consoleFlow
+        logs.remove(tabId)
+        consoleLogs.remove(tabId)
+        _logsFlow.remove(tabId)
+        _consoleFlow.remove(tabId)
+    }
 
     fun recordRequest(
         tabId: String,
@@ -88,26 +101,8 @@ class NetworkInspector {
             val old = list[idx]
             val end = System.currentTimeMillis()
             val duration = end - old.startTime
-            val preview = body?.let {
-                val bytes = it.toByteArray(Charsets.UTF_8)
-                when {
-                    bytes.size > maxBodyHardLimit -> "too large"
-                    bytes.size > maxBodyPreview -> {
-                        // truncate by bytes correctly, avoid splitting multi-byte: take substring that fits byte limit
-                        var truncated = it
-                        // binary search for safe truncation point
-                        var low = 0
-                        var high = it.length
-                        var best = maxBodyPreview
-                        // simple: take maxBodyPreview chars as approximate, then adjust
-                        truncated = it.take(maxBodyPreview)
-                        while (truncated.toByteArray(Charsets.UTF_8).size > maxBodyPreview && truncated.isNotEmpty()) {
-                            truncated = truncated.dropLast(1)
-                        }
-                        truncated + "… (truncated)"
-                    }
-                    else -> it
-                }
+            val preview = body?.let { str ->
+                if (str.isEmpty()) str else truncateBody(str)
             }
             val maskedResponseHeaders = responseHeaders?.let { HeaderMasking.mask(it) }
             val origRespHeaders = responseHeaders?.toMap()
@@ -126,12 +121,45 @@ class NetworkInspector {
         emit(tabId)
     }
 
+    // Efficient truncation using CharsetEncoder/ByteBuffer without allocating full byte array
+    private fun truncateBody(str: String): String {
+        // Hard limit check: if encoded size > 1MB -> "too large"
+        // Use encoder with limited ByteBuffer to avoid OOM on huge strings (7GB)
+        val hardEncoder = Charsets.UTF_8.newEncoder()
+            .onMalformedInput(CodingErrorAction.REPLACE)
+            .onUnmappableCharacter(CodingErrorAction.REPLACE)
+        val cbHard = CharBuffer.wrap(str)
+        val bbHard = ByteBuffer.allocate(maxBodyHardLimit + 1)
+        val crHard = hardEncoder.encode(cbHard, bbHard, true)
+        hardEncoder.flush(bbHard)
+        // If overflow or still has remaining chars, size exceeds hard limit
+        if (crHard.isOverflow || cbHard.hasRemaining() || bbHard.position() > maxBodyHardLimit) {
+            return "too large"
+        }
+        // Fits within hard limit; check preview limit
+        if (bbHard.position() <= maxBodyPreview) {
+            return str
+        }
+        // Need preview truncation to 100KB
+        val previewEncoder = Charsets.UTF_8.newEncoder()
+            .onMalformedInput(CodingErrorAction.REPLACE)
+            .onUnmappableCharacter(CodingErrorAction.REPLACE)
+        val cbPrev = CharBuffer.wrap(str)
+        val bbPrev = ByteBuffer.allocate(maxBodyPreview)
+        previewEncoder.encode(cbPrev, bbPrev, true)
+        previewEncoder.flush(bbPrev)
+        // cbPrev.position() = number of chars that fit within maxBodyPreview bytes without splitting multi-byte
+        val cut = cbPrev.position()
+        val truncated = if (cut > 0) str.substring(0, cut) else ""
+        return truncated + "… (truncated)"
+    }
+
     fun markBlocked(tabId: String, url: String, reason: String) {
         recordRequest(tabId, url, blocked = true, blockedReason = reason)
     }
 
     private fun add(tabId: String, req: CapturedRequest) {
-        val list = logs.getOrPut(tabId) { mutableListOf() }
+        val list = logs.computeIfAbsent(tabId) { mutableListOf() }
         synchronized(list) {
             if (list.size >= maxPerTab) {
                 val removed = list.removeAt(0)
@@ -156,13 +184,22 @@ class NetworkInspector {
             }
             ids.forEach { startTimes.remove(it) }
         }
+        // also clear console for consistency; use clear() not remove() to keep flows alive but empty
+        consoleLogs[tabId]?.let { cList -> synchronized(cList) { cList.clear() } }
+        _logsFlow[tabId]?.value = emptyList()
+        _consoleFlow[tabId]?.value = emptyList()
         emit(tabId)
     }
     fun clearAll() {
         logs.forEach { (_, list) -> synchronized(list) { list.clear() } }
+        consoleLogs.forEach { (_, list) -> synchronized(list) { list.clear() } }
         logs.clear()
+        consoleLogs.clear()
         startTimes.clear()
         _logsFlow.forEach { (_, flow) -> flow.value = emptyList() }
+        _consoleFlow.forEach { (_, flow) -> flow.value = emptyList() }
+        _logsFlow.clear()
+        _consoleFlow.clear()
     }
 
     fun summary(tabId: String): Summary {

@@ -10,8 +10,19 @@ object BodyCaptureHelper {
     fun shouldRefetch(method: String, contentType: String?, url: String): Boolean {
         if (method.uppercase() != "GET") return false
         if (url.length > 2048) return false
-        val lowerUrl = url.lowercase()
-        val ext = lowerUrl.substringAfterLast('.', "").substringBefore('?').substringBefore('#')
+        val ext = try {
+            // Use MimeTypeMap and Uri path segment, not substringAfterLast '.' on full URL
+            val fromMime = android.webkit.MimeTypeMap.getFileExtensionFromUrl(url)?.lowercase()
+            if (!fromMime.isNullOrBlank()) {
+                fromMime.substringBefore('?').substringBefore('#')
+            } else {
+                val path = android.net.Uri.parse(url).path ?: ""
+                val lastSegment = path.substringAfterLast('/', "")
+                lastSegment.substringAfterLast('.', "").lowercase().substringBefore('?').substringBefore('#')
+            }
+        } catch (_: Exception) {
+            ""
+        }
         if (ext in blockedExts) return false
         // fallback: also respect contentType if provided (case-insensitive), but URL ext is primary
         val ct = contentType?.lowercase() ?: ""

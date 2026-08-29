@@ -26,8 +26,8 @@ object HeaderMasking {
 
     fun scrubUrl(url: String): String {
         return try {
-            val uri = java.net.URI(url)
-            val query = uri.rawQuery ?: return url
+            val uri = android.net.Uri.parse(url)
+            val query = uri.encodedQuery ?: return url
             if (query.isEmpty()) return url
             val scrubbedQuery = query.split("&").joinToString("&") { part ->
                 val idx = part.indexOf("=")
@@ -35,12 +35,13 @@ object HeaderMasking {
                 else {
                     val k = part.substring(0, idx)
                     val v = part.substring(idx + 1)
-                    val lowerK = java.net.URLDecoder.decode(k, "UTF-8").lowercase()
+                    val lowerK = try { java.net.URLDecoder.decode(k, "UTF-8") } catch (_: Exception) { k }.lowercase()
                     val shouldScrub = sensitiveQueryKeys.any { lowerK == it || lowerK.contains(it) }
                     if (shouldScrub) "$k=${maskValue(v)}" else part
                 }
             }
-            url.replace(query, scrubbedQuery)
+            // Reconstruct URI via Uri.buildUpon to avoid replacing all occurrences in path
+            uri.buildUpon().encodedQuery(scrubbedQuery).build().toString()
         } catch (_: Exception) {
             // fallback: regex scrub for query params
             var result = url

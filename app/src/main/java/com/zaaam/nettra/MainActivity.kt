@@ -28,7 +28,10 @@ class MainActivity : ComponentActivity() {
             it.inspector.clearAll()
             com.zaaam.nettra.privacy.CookiePolicy.clearAllCookies()
             try { android.webkit.WebStorage.getInstance().deleteAllData() } catch (_: Exception) {}
-            try { android.webkit.WebView(it).clearCache(true) } catch (_: Exception) {}
+            try {
+                val tmp = android.webkit.WebView(it)
+                try { tmp.clearCache(true) } finally { tmp.destroy() }
+            } catch (_: Exception) {}
             try { android.webkit.WebView.clearClientCertPreferences(null) } catch (_: Exception) {}
         }
         super.onDestroy()

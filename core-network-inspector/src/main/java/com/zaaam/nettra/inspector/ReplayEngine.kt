@@ -15,7 +15,12 @@ object ReplayEngine {
     private val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).followRedirects(true).build()
     suspend fun replay(req: CapturedRequest, overrides: ReplayOverrides = ReplayOverrides()): ReplayResult = withContext(Dispatchers.IO) {
         val method = overrides.method ?: req.method
-        val url = overrides.url ?: req.url
+        val rawUrl = overrides.url ?: req.url
+        // Validate URL before use
+        val trimmed = rawUrl.trim()
+        require(trimmed.isNotEmpty()) { "URL must not be blank" }
+        val httpUrl = okhttp3.HttpUrl.Companion.toHttpUrlOrNull(trimmed) ?: throw IllegalArgumentException("Invalid URL: $trimmed")
+        val url = httpUrl.toString()
         // Resolve headers: prefer overrides, else use originalRequestHeaders to unmask, fallback to masked
         val baseHeaders: Map<String,String> = when {
             overrides.headers != null -> overrides.headers
@@ -33,7 +38,7 @@ object ReplayEngine {
         } else baseHeaders
         val bodyStr = overrides.body
         val builder = Request.Builder().url(url)
-        headers.forEach { (k,v) -> builder.header(k, v) }
+        headers.forEach { (k,v) -> builder.addHeader(k, v) }
         val body = if (bodyStr != null && method !in listOf("GET","HEAD")) bodyStr.toRequestBody() else null
         builder.method(method, body)
         val start = System.currentTimeMillis()

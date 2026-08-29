@@ -36,7 +36,9 @@ import com.zaaam.nettra.tabs.TabManager
 import com.zaaam.nettra.webview.JsConsoleBridge
 import com.zaaam.nettra.webview.NetTraWebViewClient
 import com.zaaam.nettra.webview.ThrottlingProfile
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val VoidInk = Color(0xFF0B0F14)
 private val Ledger = Color(0xFFF2F4F7)
@@ -65,7 +67,7 @@ private fun TabStrip(tabManager: TabManager) {
             val active = t.entity.id == selectedId
             FilterChip(
                 selected = active,
-                onClick = { tabManager.selectTab(t.entity.id) },
+                onClick = { tabManager.validateSelect(t.entity.id) },
                 label = { Text((if (t.entity.isPrivate) "◉ " else "") + t.entity.title.take(16), maxLines = 1) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = Ledger, selectedLabelColor = VoidInk
@@ -89,9 +91,10 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
     var filter by remember { mutableStateOf(ResourceType.All) }
     var search by remember { mutableStateOf("") }
     var selectedRequestId by remember { mutableStateOf<String?>(null) }
-    var blockedCount by remember { mutableStateOf(0) }
-    var throttleProfile by remember { mutableStateOf(ThrottlingProfile.OFF) }
-    var fingerprintLevel by remember { mutableStateOf("Balanced") }
+    val blockedCountMap = remember { mutableStateMapOf<String, Int>() }
+    val blockedCount by remember(selectedId) { derivedStateOf { selectedId?.let { blockedCountMap[it] } ?: 0 } }
+    val throttleProfile by remember(tabsCollect, selectedId) { derivedStateOf { tabsCollect.find { it.entity.id == selectedId }?.throttling?.let { name -> runCatching { ThrottlingProfile.valueOf(name) }.getOrDefault(ThrottlingProfile.OFF) } ?: ThrottlingProfile.OFF } }
+    val fingerprintLevel by remember(tabsCollect, selectedId) { derivedStateOf { tabsCollect.find { it.entity.id == selectedId }?.fingerprintLevel ?: "Balanced" } }
     var customBlocklist by remember { mutableStateOf(setOf("tracker.pixel.gif","ads.example.net","analytics.nope.io")) }
     var showReplay by remember { mutableStateOf(false) }
     var replayTargetId by remember { mutableStateOf<String?>(null) }
@@ -100,8 +103,11 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
     LaunchedEffect(current?.entity?.url) { urlInput = current?.entity?.url ?: "" }
     LaunchedEffect(selectedId) { selectedRequestId = null }
 
-    // Use StateFlow from NetworkInspector, collect only when visible or for display
-    val currentLog by inspector.getLogFlow(selectedId ?: "").collectAsState()
+    // Use StateFlow from NetworkInspector, guard null to avoid dummy "" leak
+    val currentLog by remember(selectedId) {
+        if (selectedId == null) kotlinx.coroutines.flow.flowOf(emptyList<com.zaaam.nettra.inspector.model.CapturedRequest>())
+        else inspector.getLogFlow(selectedId)
+    }.collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.fillMaxSize().background(VoidInk)) {
         TabStrip(tabManager = tabManager)
@@ -128,11 +134,11 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).background(Color(0xFFF9FAFB), RoundedCornerShape(8.dp)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Throttle:", style = MaterialTheme.typography.labelSmall)
             listOf(ThrottlingProfile.OFF, ThrottlingProfile.FAST_3G, ThrottlingProfile.SLOW_3G, ThrottlingProfile.OFFLINE).forEach { p ->
-                FilterChip(selected = throttleProfile == p, onClick = { throttleProfile = p; current?.let { tabManager.setThrottling(it.entity.id, p.name) } }, label = { Text(p.label) })
+                FilterChip(selected = throttleProfile == p, onClick = { current?.let { tabManager.setThrottling(it.entity.id, p.name) } }, label = { Text(p.label) })
             }
             Spacer(Modifier.weight(1f))
             Text("Fingerprint:", style = MaterialTheme.typography.labelSmall)
-            FilterChip(selected = fingerprintLevel=="Balanced", onClick = { fingerprintLevel = if(fingerprintLevel=="Balanced") "Strict" else "Balanced"; current?.let { tabManager.setFingerprintLevel(it.entity.id, fingerprintLevel) } }, label = { Text(fingerprintLevel) })
+            FilterChip(selected = fingerprintLevel=="Balanced", onClick = { val next = if(fingerprintLevel=="Balanced") "Strict" else "Balanced"; current?.let { tabManager.setFingerprintLevel(it.entity.id, next) } }, label = { Text(fingerprintLevel) })
         }
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).background(Color.White, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(value = customBlocklist.joinToString("\n"), onValueChange = { customBlocklist = it.split("\n").map{ s-> s.trim().lowercase() }.filter{ s-> s.isNotBlank() }.toSet() }, modifier = Modifier.weight(1f), placeholder = { Text("custom blocklist (1 domain per baris)") }, textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace), label = { Text("Custom Blocklist ${customBlocklist.size} domain") }, minLines = 1)
@@ -140,6 +146,22 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
 
         // WebView
         val appContext = LocalContext.current.applicationContext
+        val webViewPool = remember { mutableMapOf<String, WebView>() }
+        // cleanup WebViews for closed tabs
+        LaunchedEffect(tabsCollect) {
+            val aliveIds = tabsCollect.map { it.entity.id }.toSet()
+            val deadIds = webViewPool.keys.filter { it !in aliveIds }
+            deadIds.forEach { id ->
+                try { webViewPool[id]?.removeAllViews(); webViewPool[id]?.destroy() } catch(_: Exception){}
+                webViewPool.remove(id)
+            }
+        }
+        DisposableEffect(Unit) {
+            onDispose {
+                webViewPool.values.forEach { try { it.removeAllViews(); it.destroy() } catch(_: Exception){} }
+                webViewPool.clear()
+            }
+        }
         Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(8.dp).background(Color.White, RoundedCornerShape(12.dp))) {
             if (current != null) {
                 val tabId = current.entity.id
@@ -151,28 +173,30 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
                         privacyEngine = privacyEngine,
                         inspector = inspector,
                         customBlocklist = customBlocklist,
-                        onBlockedCount = { blockedCount = it }
+                        onBlockedCount = { blockedCountMap[tabId] = it }
                     )
                 }
                 val webView = remember(tabId) {
-                    WebView(appContext).apply {
-                        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.allowFileAccess = false
-                        settings.allowContentAccess = false
-                        settings.allowFileAccessFromFileURLs = false
-                        settings.allowUniversalAccessFromFileURLs = false
-                        settings.safeBrowsingEnabled = true
-                        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        settings.cacheMode = if (isPrivate) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_DEFAULT
-                        addJavascriptInterface(JsConsoleBridge(tabId, inspector), "NetTraConsole")
-                        CookiePolicy.applyToWebView(this)
-                        webChromeClient = WebChromeClient()
-                        webViewClient = client
-                        val initialUrl = current.entity.url.takeIf { it.isNotBlank() } ?: "https://example.com"
-                        if (isUrlAllowed(initialUrl)) {
-                            loadUrl(initialUrl)
+                    webViewPool.getOrPut(tabId) {
+                        WebView(appContext).apply {
+                            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            settings.allowFileAccess = false
+                            settings.allowContentAccess = false
+                            settings.allowFileAccessFromFileURLs = false
+                            settings.allowUniversalAccessFromFileURLs = false
+                            settings.safeBrowsingEnabled = true
+                            settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                            settings.cacheMode = if (isPrivate) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_DEFAULT
+                            addJavascriptInterface(JsConsoleBridge(tabId, inspector), "NetTraConsole")
+                            CookiePolicy.applyToWebView(this)
+                            webChromeClient = WebChromeClient()
+                            webViewClient = client
+                            val initialUrl = current.entity.url.takeIf { it.isNotBlank() } ?: "https://example.com"
+                            if (isUrlAllowed(initialUrl)) {
+                                loadUrl(initialUrl)
+                            }
                         }
                     }
                 }
@@ -181,15 +205,15 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
                     webView.settings.cacheMode = if (isPrivate) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_DEFAULT
                 }
                 DisposableEffect(tabId) {
+                    webView.onResume()
                     onDispose {
-                        webView.removeAllViews()
-                        webView.destroy()
+                        webView.onPause()
                     }
                 }
                 AndroidView(
                     factory = { webView },
                     update = { wv ->
-                        // Do not recreate client each update; only update if needed
+                        if (wv.webViewClient !== client) wv.webViewClient = client
                         // Validate URL before loading if url changed externally
                         val target = current.entity.url
                         if (target.isNotBlank() && isUrlAllowed(target) && wv.url != target) {
@@ -258,6 +282,7 @@ fun InspectorSheet(
     var showReplay by remember { mutableStateOf(false) }
     var replayTarget by remember { mutableStateOf<com.zaaam.nettra.inspector.model.CapturedRequest?>(null) }
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     Card(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp).padding(8.dp), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -268,15 +293,17 @@ fun InspectorSheet(
                     Switch(checked = preserve, onCheckedChange = { tabManager.setPreserveLog(tabId, it) })
                 }
                 TextButton(onClick = {
-                    val har = HarExporter.export(log)
-                    try {
-                        val dir = java.io.File(ctx.cacheDir, "har"); dir.mkdirs()
-                        val f = java.io.File(dir, "nettra-${tabId.take(6)}.har")
-                        f.writeText(har)
-                        val uri = androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", f)
-                        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply { type = "application/json"; putExtra(android.content.Intent.EXTRA_STREAM, uri); addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-                        ctx.startActivity(android.content.Intent.createChooser(intent, "Ekspor HAR"))
-                    } catch (_: Exception) {}
+                    scope.launch {
+                        val har = HarExporter.export(log)
+                        try {
+                            val dir = java.io.File(ctx.cacheDir, "har"); dir.mkdirs()
+                            val f = java.io.File(dir, "nettra-${tabId.take(6)}.har")
+                            withContext(Dispatchers.IO) { f.writeText(har) }
+                            val uri = androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", f)
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply { type = "application/json"; putExtra(android.content.Intent.EXTRA_STREAM, uri); addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+                            ctx.startActivity(android.content.Intent.createChooser(intent, "Ekspor HAR"))
+                        } catch (_: Exception) {}
+                    }
                 }) { Text("Ekspor HAR") }
                 TextButton(onClick = { inspector.clear(tabId); inspector.clearConsole(tabId) }) { Text("Hapus Log") }
                 IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null) }

@@ -27,6 +27,7 @@ class NetTraWebViewClient(
     private val lock = Any()
     @Volatile private var pageHost: String? = null
     private var blockedInPage = 0
+    private val injectedTabs = mutableSetOf<String>()
 
     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
@@ -34,20 +35,27 @@ class NetTraWebViewClient(
             synchronized(lock) {
                 pageHost = try { android.net.Uri.parse(url).host?.lowercase() } catch (_: Exception) { null }
                 blockedInPage = 0
+                injectedTabs.remove(tabId)
             }
             tabManager.onPageStarted(tabId)
-            tabManager.updateTabUrl(tabId, url, view?.title ?: url)
+            tabManager.updateTabUrl(tabId, url, view?.title?.takeIf { it.isNotBlank() } ?: url)
             onPageInfo(url, view?.title ?: url)
         }
     }
 
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
-        if (url != null) onPageInfo(url, view?.title ?: url)
+        if (url != null) {
+            tabManager.updateTabUrl(tabId, url, view?.title?.takeIf { it.isNotBlank() } ?: url)
+            onPageInfo(url, view?.title ?: url)
+        }
         val count: Int
         synchronized(lock) { count = blockedInPage }
         onBlockedCount(count)
-        // Phase2: inject fingerprint & console bridge
+        // Phase2: inject fingerprint & console bridge - guard duplicate per tab per page load
+        synchronized(lock) {
+            if (!injectedTabs.add(tabId)) return
+        }
         view?.let { wv ->
             val level = tabManager.tabs.value.find { it.entity.id == tabId }?.fingerprintLevel ?: "Balanced"
             val fpScript = FingerprintInjector.script(level)
