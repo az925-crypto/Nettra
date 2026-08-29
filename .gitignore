@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+build/
+*/build/
+local.properties
+*.ap_
+*.aab
+*.apk
+
+# Idea
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keystore
+*.jks
+*.keystore
+
+# Mockup server
+/tmp/mockup.log
+
+# Environment
+.env

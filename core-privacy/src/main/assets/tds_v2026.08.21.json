@@ -1,0 +1,14 @@
+{
+  "version": "v2026.08.21",
+  "generatedAt": "2026-08-21T00:00:00Z",
+  "trackers": [
+    {"domain": "google-analytics.com", "category": "analytics"},
+    {"domain": "doubleclick.net", "category": "ads"},
+    {"domain": "facebook.net", "category": "social"},
+    {"domain": "facebook.com", "category": "social"},
+    {"domain": "googletagmanager.com", "category": "analytics"},
+    {"domain": "hotjar.com", "category": "analytics"},
+    {"domain": "adservice.google.com", "category": "ads"},
+    {"domain": "googlesyndication.com", "category": "ads"}
+  ]
+}
