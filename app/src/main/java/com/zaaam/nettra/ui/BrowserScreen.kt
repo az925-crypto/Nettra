@@ -10,7 +10,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -118,7 +120,7 @@ private fun NewTabStrip(tabManager: TabManager) {
 
 // clickable tanpa ripple helper
 private fun Modifier.clickableWithoutRipple(onClick: () -> Unit): Modifier = this.then(
-    androidx.compose.foundation.clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onClick)
+    clickable(interactionSource = MutableInteractionSource(), indication = null, onClick = onClick)
 )
 
 // ---------- Address Pill ----------
@@ -390,13 +392,13 @@ fun InspectorSheet(
             val selected = log.find { it.id == selectedId }
             if (selected != null) {
                 var tabIdx by remember { mutableIntStateOf(0) }
-                TabRow(selectedTabIndex = tabIdx, containerColor = Color.White, contentColor = VoidInk, indicator = { tabPositions -> TabRowDefaults.Indicator(Modifier.tabIndicatorOffset(tabPositions[tabIdx]), color = Amber, height = 2.dp) }) {
+                TabRow(selectedTabIndex = tabIdx, containerColor = Color.White, contentColor = VoidInk) {
                     listOf("Headers","Preview","Response","Timing","Console").forEachIndexed { i, t -> Tab(selected = tabIdx==i, onClick = {tabIdx=i}, text = {Text(t + if(t=="Console") " ${consoleLogs.size}" else "", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)}) }
                 }
                 when (tabIdx) { 0 -> HeadersTab(selected); 1 -> PreviewTab(selected); 2 -> ResponseTab(selected); 3 -> TimingTab(selected); 4 -> ConsoleTab(inspector, tabId, consoleLogs) }
             } else {
                 var tabIdx by remember { mutableIntStateOf(0) }
-                TabRow(selectedTabIndex = tabIdx, containerColor = Color.White, contentColor = VoidInk, indicator = { tabPositions -> TabRowDefaults.Indicator(Modifier.tabIndicatorOffset(tabPositions[tabIdx]), color = Amber) }) {
+                TabRow(selectedTabIndex = tabIdx, containerColor = Color.White, contentColor = VoidInk) {
                     listOf("Headers","Preview","Response","Timing","Console").forEachIndexed { i, t -> Tab(selected = tabIdx==i, onClick = {tabIdx=i}, text = {Text(t + if(t=="Console") " ${consoleLogs.size}" else "", fontSize = 13.sp)}) }
                 }
                 if (tabIdx == 4) ConsoleTab(inspector, tabId, consoleLogs) else Text("Ketuk baris untuk detail • Header sensitif ter-mask • HAR siap ekspor", fontSize = 11.sp, color = Slate, modifier = Modifier.padding(12.dp))
