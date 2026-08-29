@@ -104,8 +104,9 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
 
     // Use StateFlow from NetworkInspector, guard null to avoid dummy "" leak
     val currentLog by remember(selectedId) {
-        if (selectedId == null) kotlinx.coroutines.flow.flowOf(emptyList<com.zaaam.nettra.inspector.model.CapturedRequest>())
-        else inspector.getLogFlow(selectedId)
+        val sid = selectedId
+        if (sid == null) kotlinx.coroutines.flow.flowOf(emptyList<com.zaaam.nettra.inspector.model.CapturedRequest>())
+        else inspector.getLogFlow(sid)
     }.collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.fillMaxSize().background(VoidInk)) {
