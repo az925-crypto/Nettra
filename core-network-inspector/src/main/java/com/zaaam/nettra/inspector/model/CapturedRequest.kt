@@ -16,8 +16,13 @@ data class CapturedRequest(
     val bodyPreview: String? = null, // truncated 100KB
     val timing: TimingInfo? = null,
     val blocked: Boolean = false,
-    val blockedReason: String? = null
-)
+    val blockedReason: String? = null,
+    val originalRequestHeaders: Map<String, String>? = null,
+    val originalResponseHeaders: Map<String, String>? = null
+) {
+    // backward compat alias for older code/tests expecting originalHeaders
+    val originalHeaders: Map<String, String>? get() = originalRequestHeaders
+}
 
 data class TimingInfo(
     val queueing: Long? = null,

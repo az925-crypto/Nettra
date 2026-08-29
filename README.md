@@ -10,7 +10,14 @@ Privacy-first browser Android (block tracker, block third-party cookie, HTTPS-fi
 - Network Inspector Opsi A (`WebViewClient.shouldInterceptRequest`): list request (name/status/type/size/time + waterfall), filter chips All/Fetch-XHR/JS/CSS/Img/Media/Font/Doc + search, detail tabs Headers/Preview/Response/Timing, masking header sensitif (`Authorization/Cookie/Set-Cookie/api-key` + query param scrub), preserve log toggle, per-tab enable, summary bar, 300 req/tab LRU + 100KB preview + 1MB hard limit (in-memory only, tidak persist)
 - Edge: file:// / javascript: / data: di-block (`allowFileAccess=false`), WebSocket di-skip, large body `too large`, 5 tab concurrent capture limit
 
-Phase 2 (next): local proxy + custom CA untuk response body penuh + Timing breakdown granular + HAR export + request replay.
+Phase 2 (P2) — Selesai
+- Response body full: GET re-fetch via OkHttp (1MB limit, streaming) + JsonPretty, Preview/Response tab full pretty
+- Replay: ReplayEngine (OkHttp) + ReplayDialog (method/url/headers/body override) + badge replay
+- HAR: HarExporter (spec 1.2) + FileProvider share `cache/har/nettra-*.har`
+- Fingerprint: FingerprintInjector (Balanced/Strict) via evaluateJavascript, per-tab level
+- Custom blocklist: CustomBlocklistManager (DataStore) + Room custom_filters v2 (MIGRATION_1_2) + PrivacyEngine merge
+- Console: JsConsoleBridge addJavascriptInterface + NetworkInspector consoleLogs 200 cap + ConsoleTab dengan execute JS
+- Throttling: ThrottlingInterceptor per-tab (OFF/SLOW_3G/FAST_3G/OFFLINE) + UI selector, waterfall striped, offline 503 tetap record
 
 ## Struktur Modul
 ```
@@ -48,9 +55,10 @@ Desain: Void Ink `#0B0F14` + Ledger `#F2F4F7` + Slate `#6B7A90` + Pulse Amber `#
 - Manual: buka `https://example.com`, aktifkan Inspektor, cek filter, detail, masking, private tab wipe.
 
 ## Roadmap
-- Fase 0: validasi Opsi A vs B (selesai — Opsi A untuk MVP)
+- Fase 0: validasi Opsi A vs B (selesai — Opsi A enhanced untuk P2, Opsi B CA proxy stub disclosure)
 - Fase 1: MVP P0 (selesai)
-- Fase 2: Opsi B proxy, HAR export, replay, throttling, fingerprint protection
+- Fase 2: P2 7 fitur selesai (di atas)
+- Fase 3: Opsi B CA full proxy (jika dibutuhkan) + sync + extension
 
 ## Lisensi
 Private — zaaam/nettra.

@@ -30,6 +30,19 @@ class NetworkInspector {
         }
     }
 
+    // Phase2: console logs per tab
+    private val consoleLogs = ConcurrentHashMap<String, MutableList<com.zaaam.nettra.inspector.model.ConsoleEntry>>()
+    private val _consoleFlow = ConcurrentHashMap<String, kotlinx.coroutines.flow.MutableStateFlow<List<com.zaaam.nettra.inspector.model.ConsoleEntry>>>()
+    private fun getOrCreateConsoleFlow(tabId: String) = _consoleFlow.getOrPut(tabId) { kotlinx.coroutines.flow.MutableStateFlow(emptyList()) }
+    fun getConsoleFlow(tabId: String): kotlinx.coroutines.flow.StateFlow<List<com.zaaam.nettra.inspector.model.ConsoleEntry>> = getOrCreateConsoleFlow(tabId)
+    fun addConsoleLog(tabId: String, entry: com.zaaam.nettra.inspector.model.ConsoleEntry) {
+        val list = consoleLogs.getOrPut(tabId) { mutableListOf() }
+        synchronized(list) { if (list.size >= 200) list.removeAt(0); list.add(entry) }
+        getOrCreateConsoleFlow(tabId).value = synchronized(list) { list.toList() }
+    }
+    fun getConsoleLog(tabId: String): List<com.zaaam.nettra.inspector.model.ConsoleEntry> = consoleLogs[tabId]?.toList() ?: emptyList()
+    fun clearConsole(tabId: String) { consoleLogs[tabId]?.clear(); getOrCreateConsoleFlow(tabId).value = emptyList() }
+
     fun recordRequest(
         tabId: String,
         url: String,
@@ -48,6 +61,7 @@ class NetworkInspector {
         val req = CapturedRequest(
             id = id, tabId = tabId, url = scrubbedUrl, method = method,
             type = type, startTime = now, requestHeaders = maskedHeaders,
+            originalRequestHeaders = headers.toMap(),
             blocked = blocked, blockedReason = blockedReason,
             status = if (blocked) null else null,
             timing = TimingInfo(total = 0)
@@ -96,9 +110,11 @@ class NetworkInspector {
                 }
             }
             val maskedResponseHeaders = responseHeaders?.let { HeaderMasking.mask(it) }
+            val origRespHeaders = responseHeaders?.toMap()
             list[idx] = old.copy(
                 status = status ?: old.status,
                 responseHeaders = maskedResponseHeaders ?: old.responseHeaders,
+                originalResponseHeaders = origRespHeaders ?: old.originalResponseHeaders,
                 bodyPreview = preview ?: old.bodyPreview,
                 size = size ?: old.size,
                 endTime = end,

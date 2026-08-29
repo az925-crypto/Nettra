@@ -11,7 +11,9 @@ import java.util.UUID
 data class TabState(
     val entity: TabEntity,
     val inspectorEnabled: Boolean = false,
-    val preserveLog: Boolean = false
+    val preserveLog: Boolean = false,
+    val throttling: String = "OFF", // OFF, SLOW_3G, FAST_3G, OFFLINE
+    val fingerprintLevel: String = "Balanced"
 )
 
 class TabManager(
@@ -71,9 +73,23 @@ class TabManager(
         _tabs.value = _tabs.value.map { if (it.entity.id == id) it.copy(preserveLog = preserve) else it }
     }
 
+    fun setThrottling(id: String, profile: String) {
+        _tabs.value = _tabs.value.map { if (it.entity.id == id) it.copy(throttling = profile) else it }
+    }
+
+    fun setFingerprintLevel(id: String, level: String) {
+        _tabs.value = _tabs.value.map { if (it.entity.id == id) it.copy(fingerprintLevel = level) else it }
+    }
+
     fun onPageStarted(id: String) {
         val tab = _tabs.value.find { it.entity.id == id } ?: return
         if (!tab.preserveLog) inspector?.clear(id)
+    }
+
+    fun validateSelect(id: String): Boolean {
+        if (_tabs.value.none { it.entity.id == id }) return false
+        _selectedId.value = id
+        return true
     }
 
     fun currentTab(): TabState? = _tabs.value.find { it.entity.id == _selectedId.value }

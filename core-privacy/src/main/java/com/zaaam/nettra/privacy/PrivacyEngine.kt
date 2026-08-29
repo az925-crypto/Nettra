@@ -9,13 +9,13 @@ class PrivacyEngine(
     // FR-13: third-party cookie blocked via CookiePolicy, not here
     // FR-14: HTTPS upgrade
 
-    fun shouldBlock(requestUrl: String, pageHost: String?): Boolean {
+    fun shouldBlock(requestUrl: String, pageHost: String?, customList: Set<String> = emptySet()): Boolean {
         val host = try { URI(requestUrl).host?.lowercase() ?: return false } catch (_: Exception) { return false }
         if (pageHost == null) return false
         val pageHostLower = pageHost.lowercase()
         if (host == pageHostLower || host.endsWith("." + pageHostLower)) return false // first-party never blocked
-        // simple suffix match
-        return blockList.any { host == it || host.endsWith(".$it") }
+        val combined = blockList + customList
+        return combined.any { host == it || host.endsWith(".$it") }
     }
 
     fun isTrackerHost(host: String): Boolean =
