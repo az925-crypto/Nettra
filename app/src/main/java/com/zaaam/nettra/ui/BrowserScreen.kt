@@ -79,9 +79,6 @@ private fun isUrlAllowed(url: String): Boolean {
 
 @Composable
 private fun PillAddressBar(urlInput: String, onUrlChange: (String) -> Unit, blockedCount: Int, isPrivate: Boolean, progress: Float) {
-    val pillBg = Color.White
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).clip(RoundedCornerShape(999.dp)).background(pillBg).border(1.5f.dpToPx(), if (isPrivate) Color(0xFF2A1F3D) else Line, RoundedCornerShape(999.dp)).padding(0.dp)) {
-    }
     // Use Card with shadow for depth
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -127,7 +124,7 @@ private fun PillAddressBar(urlInput: String, onUrlChange: (String) -> Unit, bloc
     }
 }
 
-private fun Modifier.dpToPx(): androidx.compose.ui.graphics.Brush = androidx.compose.ui.graphics.SolidColor(Line)
+
 
 @Composable
 private fun FloatingDock(
@@ -173,13 +170,13 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
     val blockedCountMap = remember { mutableStateMapOf<String, Int>() }
     val blockedCount by remember(selectedId) { derivedStateOf { selectedId?.let { blockedCountMap[it] } ?: 0 } }
     var customBlocklist by remember { mutableStateOf(setOf("tracker.pixel.gif","ads.example.net","analytics.nope.io")) }
-    val progress by remember { derivedStateOf { if (currentLog.isNotEmpty()) 0.62f else 0f } }
 
     LaunchedEffect(selectedId) { urlInput = current?.entity?.url ?: "https://example.com"; selectedRequestId = null }
 
     val currentLog by remember(selectedId) {
         val sid = selectedId; if (sid == null) kotlinx.coroutines.flow.flowOf(emptyList<com.zaaam.nettra.inspector.model.CapturedRequest>()) else inspector.getLogFlow(sid)
     }.collectAsState(initial = emptyList())
+    val progress by remember(currentLog) { derivedStateOf { if (currentLog.isNotEmpty()) 0.62f else 0f } }
 
     Box(modifier = Modifier.fillMaxSize().background(Abyss)) {
         Column(modifier = Modifier.fillMaxSize()) {
