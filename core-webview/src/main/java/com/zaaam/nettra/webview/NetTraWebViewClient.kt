@@ -23,6 +23,17 @@ class NetTraWebViewClient(
     private val onPageInfo: (url: String, title: String) -> Unit = { _, _ -> },
     private val onBlockedCount: (Int) -> Unit = {}
 ) : WebViewClient() {
+    companion object {
+        private val sharedClient by lazy {
+            okhttp3.OkHttpClient.Builder()
+                .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .followRedirects(false)
+                .connectionSpecs(listOf(okhttp3.ConnectionSpec.MODERN_TLS))
+                .build()
+        }
+        private val ioScope = CoroutineScope(Dispatchers.IO)
+    }
 
     private val lock = Any()
     @Volatile private var pageHost: String? = null
@@ -77,6 +88,9 @@ class NetTraWebViewClient(
         val url = request.url.toString()
         val lowerUrl = url.trim().lowercase()
         if (lowerUrl.startsWith("ws://") || lowerUrl.startsWith("wss://")) return null
+        if (lowerUrl.startsWith("javascript:") || lowerUrl.startsWith("data:") || lowerUrl.startsWith("file:") || lowerUrl.startsWith("content:")) {
+            return WebResourceResponse("text/plain", "utf-8", 403, "Blocked", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+        }
         val method = request.method ?: "GET"
         val headers = request.requestHeaders ?: emptyMap()
         val enabled = tabManager.tabs.value.find { it.entity.id == tabId }?.inspectorEnabled ?: false
@@ -100,14 +114,13 @@ class NetTraWebViewClient(
 
         if (enabled) {
             val req = inspector.recordRequest(tabId, url, method, headers)
-            // Phase2: re-fetch GET for body capture (safe, no side-effect) - fix #1 case-insensitive, fix #2 streaming limit
+            // Phase2: re-fetch GET for body capture - only https, safe no side-effect
             val acceptVal = BodyCaptureHelper.getHeaderIgnoreCase(headers, "Accept")
-            if (BodyCaptureHelper.shouldRefetch(method, acceptVal, url)) {
-                CoroutineScope(Dispatchers.IO).launch {
+            if (BodyCaptureHelper.shouldRefetch(method, acceptVal, url) && lowerUrl.startsWith("https://")) {
+                ioScope.launch {
                     var resp: okhttp3.Response? = null
                     try {
-                        val client = okhttp3.OkHttpClient.Builder().connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS).readTimeout(5, java.util.concurrent.TimeUnit.SECONDS).build()
-                        resp = client.newCall(okhttp3.Request.Builder().url(url).build()).execute()
+                        resp = sharedClient.newCall(okhttp3.Request.Builder().url(url).build()).execute()
                         val rh = resp.headers.toMultimap().mapValues { it.value.joinToString(",") }
                         val body: String? = try {
                             resp.body?.let { rb ->
@@ -135,10 +148,14 @@ class NetTraWebViewClient(
     }
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-        // HTTPS-first upgrade
         val url = request?.url.toString()
         val trimmed = url.trim()
-        if (trimmed.lowercase().startsWith("http://")) {
+        val lower = trimmed.lowercase()
+        if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("file:") || lower.startsWith("content:")) {
+            return true
+        }
+        // HTTPS-first upgrade
+        if (lower.startsWith("http://")) {
             val upgraded = privacyEngine.shouldUpgradeToHttps(trimmed)
             if (upgraded != null) {
                 view?.loadUrl(upgraded)

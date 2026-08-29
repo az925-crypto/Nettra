@@ -28,13 +28,23 @@ object HarExporter {
         // fallback: infer from type? use text/plain as spec says
         return "text/plain"
     }
+    private fun maskBody(body: String?): String? {
+        if (body == null) return null
+        var masked = body
+        val sensitive = listOf("password","token","secret","api_key","apikey","api-key","auth","authorization","access_token","refresh_token")
+        for (key in sensitive) {
+            masked = masked.replace(Regex("(?i)\"$key\"\\s*:\\s*\"[^\"]*\""), "\"$key\":\"***\"")
+            masked = masked.replace(Regex("(?i)$key\\s*=\\s*[^&\\s\"]+"), "$key=***")
+        }
+        return masked
+    }
     fun export(log: List<CapturedRequest>): String {
         val entries = log.map { req ->
             HarEntry(
                 startedDateTime = java.time.Instant.ofEpochMilli(req.startTime).toString(),
                 time = req.durationMs ?: 0,
                 request = HarRequest(req.method, req.url, req.requestHeaders.map { HarHeader(it.key, it.value) }),
-                response = HarResponse(req.status ?: 0, HarContent(req.size ?: 0, resolveMime(req), req.bodyPreview), (req.responseHeaders ?: emptyMap()).map { HarHeader(it.key, it.value) })
+                response = HarResponse(req.status ?: 0, HarContent(req.size ?: 0, resolveMime(req), maskBody(req.bodyPreview)), (req.responseHeaders ?: emptyMap()).map { HarHeader(it.key, it.value) })
             )
         }
         return json.encodeToString(Har(HarLog(entries = entries)))

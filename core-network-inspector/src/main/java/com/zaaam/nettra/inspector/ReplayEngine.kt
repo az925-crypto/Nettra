@@ -42,10 +42,11 @@ object ReplayEngine {
         val body = if (bodyStr != null && method !in listOf("GET","HEAD")) bodyStr.toRequestBody() else null
         builder.method(method, body)
         val start = System.currentTimeMillis()
-        val resp = client.newCall(builder.build()).execute()
-        val duration = System.currentTimeMillis() - start
-        val respBody = try { resp.body?.string()?.take(1024*1024) } catch (_: Exception) { null }
-        val respHeaders = resp.headers.toMultimap().mapValues { it.value.joinToString(",") }
-        ReplayResult(resp.code, respHeaders, respBody, duration)
+        return client.newCall(builder.build()).execute().use { resp ->
+            val duration = System.currentTimeMillis() - start
+            val respBody = try { resp.body?.string()?.take(1024*1024) } catch (_: Exception) { null }
+            val respHeaders = resp.headers.toMultimap().mapValues { it.value.joinToString(",") }
+            ReplayResult(resp.code, respHeaders, respBody, duration)
+        }
     }
 }

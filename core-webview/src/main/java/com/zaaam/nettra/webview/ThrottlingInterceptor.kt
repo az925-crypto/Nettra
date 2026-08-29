@@ -8,7 +8,7 @@ object ThrottlingInterceptor {
 
     fun maybeThrottle(profile: ThrottlingProfile) {
         val d = profile.delayMs
-        if (d > 0) try { Thread.sleep(d) } catch (_: InterruptedException) {}
+        if (d > 0) try { Thread.sleep(d) } catch (e: InterruptedException) { Thread.currentThread().interrupt() }
     }
     fun isOffline(profile: ThrottlingProfile): Boolean = profile == ThrottlingProfile.OFFLINE
 

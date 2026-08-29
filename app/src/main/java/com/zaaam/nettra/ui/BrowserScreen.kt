@@ -100,8 +100,7 @@ fun BrowserScreen(tabManager: TabManager, privacyEngine: PrivacyEngine, inspecto
     var replayTargetId by remember { mutableStateOf<String?>(null) }
     var jsInput by remember { mutableStateOf("") }
 
-    LaunchedEffect(current?.entity?.url) { urlInput = current?.entity?.url ?: "" }
-    LaunchedEffect(selectedId) { selectedRequestId = null }
+    LaunchedEffect(selectedId) { urlInput = current?.entity?.url ?: "https://example.com"; selectedRequestId = null }
 
     // Use StateFlow from NetworkInspector, guard null to avoid dummy "" leak
     val currentLog by remember(selectedId) {
@@ -274,7 +273,7 @@ fun InspectorSheet(
     onDismiss: () -> Unit,
     tabManager: TabManager
 ) {
-    val summary = inspector.summary(tabId)
+    val summary = remember(log) { inspector.summary(tabId) }
     val tabs by tabManager.tabs.collectAsState()
     val tabState = tabs.find { it.entity.id == tabId }
     val preserve = tabState?.preserveLog ?: false
@@ -460,7 +459,7 @@ fun ConsoleTab(inspector: NetworkInspector, tabId: String, logs: List<com.zaaam.
     var output by remember { mutableStateOf<String?>(null) }
     Column {
         LazyColumn(modifier = Modifier.height(140.dp).background(Color.White, RoundedCornerShape(8.dp)).padding(8.dp)) {
-            items(logs.size) { idx ->
+            items(logs.size, key = { idx -> logs[idx].hashCode() + idx }) { idx ->
                 val e = logs[idx]
                 Row(modifier = Modifier.padding(vertical = 2.dp)) {
                     val badgeColor = when(e.level) { "WARN"->Amber; "ERROR"-> Color(0xFFE5484D); else->Color(0xFFE8EBEE) }
@@ -490,7 +489,7 @@ fun ReplayDialog(request: com.zaaam.nettra.inspector.model.CapturedRequest, onDi
     var method by remember { mutableStateOf(request.method) }
     var url by remember { mutableStateOf(request.url) }
     var body by remember { mutableStateOf(request.bodyPreview ?: "") }
-    var headersText by remember { mutableStateOf((request.originalRequestHeaders ?: request.requestHeaders).entries.joinToString("\n") { "${it.key}: ${it.value}" }) }
+    var headersText by remember { mutableStateOf(request.requestHeaders.entries.joinToString("\n") { "${it.key}: ${it.value}" }) }
     var result by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     fun parseHeaders(input: String): Map<String,String>? {
