@@ -294,8 +294,8 @@ fun InspectorSheet(
                 }
                 TextButton(onClick = {
                     scope.launch {
-                        val har = HarExporter.export(log)
                         try {
+                            val har = withContext(Dispatchers.IO) { HarExporter.export(log) }
                             val dir = java.io.File(ctx.cacheDir, "har"); dir.mkdirs()
                             val f = java.io.File(dir, "nettra-${tabId.take(6)}.har")
                             withContext(Dispatchers.IO) { f.writeText(har) }
