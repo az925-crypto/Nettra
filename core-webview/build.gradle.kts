@@ -20,5 +20,6 @@ dependencies {
     implementation(project(":core-privacy"))
     implementation(project(":core-network-inspector"))
     implementation(project(":core-tabs"))
+    implementation(libs.okhttp)
     testImplementation(libs.junit)
 }
