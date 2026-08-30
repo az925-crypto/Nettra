@@ -3,152 +3,117 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NETTRA — BURN DOSSIER</title>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Space+Grotesque:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<title>NETTRA — BUNKER HUD (Android Native)</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@500;700&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{
-  --void:#0B0F12; --concrete:#1E2328; --concrete2:#252A30; --paper:#F2EFE7; --soot:#8C877F; --burn:#FF3A1E; --burn2:#D42F16; --border:#2A3036;
-}
+:root{--void:#06080B;--bunker:#1A1D21;--bunker2:#23262D;--ash:#9AA0A8;--paper:#F2F3F5;--lime:#D6FF2A;--ember:#FF3B30;--border:rgba(255,255,255,.12)}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Space Grotesque',sans-serif;background:var(--void);color:var(--paper);min-height:100vh;display:flex;flex-direction:column}
-.mono{font-family:'JetBrains Mono',monospace}
-.serif{font-family:'Instrument Serif',serif}
-.top{height:28px;background:#000;color:var(--soot);display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:10px;letter-spacing:.14em}
-.top b{color:var(--paper)}
+body{font-family:'Instrument Sans',sans-serif;background:#000;color:var(--paper);min-height:100vh;display:flex;flex-direction:column}
+.top{height:28px;background:#000;color:var(--ash);display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;border-bottom:1px solid var(--border)}
 .wrap{flex:1;display:flex;gap:32px;justify-content:center;padding:28px 20px;max-width:1400px;margin:0 auto;width:100%}
 .left{flex:0 0 390px;max-width:390px;position:sticky;top:20px}
 .right{flex:1;min-width:320px;max-width:560px}
 @media(max-width:900px){.wrap{flex-direction:column;align-items:center}.left{position:relative;top:auto}}
-.phone{width:390px;max-width:100%;height:820px;background:var(--void);border:1.5px solid var(--border);border-radius:4px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 0 0 1px #000, 8px 8px 0 #000}
-.phone::before{content:"NETTRA — DOSSIER";position:absolute;top:0;left:12px;right:12px;height:18px;display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;color:var(--soot);z-index:5}
-.bar{margin:22px 10px 6px;background:var(--paper);border:1.5px solid #000;border-radius:4px;display:flex;align-items:center;gap:8px;padding:8px 8px 8px 10px}
-.stamp{width:28px;height:28px;background:#000;color:var(--paper);display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;border-radius:2px;cursor:pointer}
-.stamp.burn{background:var(--burn);color:var(--paper)}
-.bar input{flex:1;background:transparent;border:none;outline:none;color:var(--void);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
-.bar input::placeholder{color:var(--soot);font-weight:500}
-.redacted{display:flex;gap:4px;align-items:center}
-.redacted i{display:block;width:28px;height:10px;background:#000;border-radius:2px}
-.badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 7px;border-radius:2px;background:var(--void);color:var(--paper);border:1px solid #000}
-.tabs{display:flex;gap:0;padding:0 10px 0;overflow-x:auto;scrollbar-width:none}
-.tab{padding:10px 14px 9px;background:var(--concrete);color:var(--soot);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap;border:1px solid var(--border);border-bottom:none;border-radius:4px 4px 0 0;margin-right:-8px;position:relative}
-.tab.active{background:var(--paper);color:var(--void);z-index:2;border-color:#000;border-bottom:1px solid var(--paper);margin-bottom:-1px}
-.tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;background:var(--burn)}
-.viewport{flex:1;overflow:hidden;position:relative;background:var(--void);border-top:1px solid #000;display:flex;flex-direction:column}
+.phone{width:390px;max-width:100%;height:820px;background:var(--void);border:1px solid var(--border);border-radius:28px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06) inset}
+.status{height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ash)}
+.status b{color:var(--paper);letter-spacing:.08em}
+.pill{margin:8px 16px;background:var(--bunker);border:1px solid var(--border);border-radius:28px;height:56px;display:flex;align-items:center;gap:10px;padding:0 14px}
+.pill:focus-within{border-color:var(--lime);box-shadow:0 0 0 2px rgba(214,255,42,.2)}
+.pill input{flex:1;background:transparent;border:none;outline:none;color:var(--paper);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.pill input::placeholder{color:var(--ash);font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime)}
+.badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 8px;border-radius:12px;background:var(--void);border:1px solid var(--border);color:var(--paper)}
+.tabs{display:flex;gap:8px;padding:0 16px 8px;overflow-x:auto;scrollbar-width:none}
+.tab{padding:6px 10px;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;border:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.tab.active{background:var(--lime);color:var(--void);border-color:var(--lime)}
+.tab:not(.active){background:var(--bunker2);color:var(--ash)}
+.dot2{width:6px;height:6px;border-radius:50%;background:currentColor}
+.viewport{flex:1;overflow:hidden;position:relative;background:var(--void);display:flex;flex-direction:column}
 .view{flex:1;overflow:auto;display:none;flex-direction:column}
 .view.active{display:flex}
-.new{padding:18px 14px;flex:1;display:flex;flex-direction:column;gap:14px;background:repeating-linear-gradient(0deg, transparent 0 31px, rgba(255,255,255,.04) 32px), var(--void)}
-.new h1{font-family:'Instrument Serif',serif;font-size:38px;line-height:.9;letter-spacing:-.02em;color:var(--paper)}
-.new h1 i{font-style:normal;color:var(--burn)}
-.sub{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--soot)}
-.card{background:var(--paper);color:var(--void);border:1.5px solid #000;border-radius:4px;padding:12px;box-shadow:4px 4px 0 #000}
-.card.dark{background:var(--concrete);color:var(--paper);border-color:var(--border);box-shadow:none}
-.search{display:flex;align-items:center;gap:8px;background:var(--void);border:1px solid #000;border-radius:2px;padding:10px}
-.search input{flex:1;background:transparent;border:none;outline:none;color:var(--paper);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
-.search input::placeholder{color:var(--soot)}
-.cursor{width:10px;height:14px;background:var(--burn);display:inline-block;vertical-align:middle;animation:blink 1s step-end infinite}
-@keyframes blink{50%{opacity:0}}
-.chips{display:flex;gap:6px;flex-wrap:wrap}
-.chip{padding:6px 10px;background:var(--concrete);color:var(--soot);border:1px solid var(--border);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.04em;cursor:pointer}
-.stats{display:grid;grid-template-columns:1.2fr .8fr;gap:10px}
-.stat{background:var(--paper);border:1.5px solid #000;border-radius:4px;padding:12px;box-shadow:4px 4px 0 #000}
-.stat label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--soot)}
-.stat strong{font-family:'Instrument Serif',serif;font-size:32px;line-height:1;display:block;margin-top:4px;color:var(--void)}
-.stat.dark{background:var(--concrete);color:var(--paper);border-color:var(--border);box-shadow:none}
-.stat.dark strong{color:var(--paper)}
-.btn{padding:8px 12px;border-radius:2px;border:1.5px solid #000;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer}
-.btn.paper{background:var(--paper);color:var(--void)}
-.btn.burn{background:var(--burn);color:var(--paper);border-color:#000;box-shadow:2px 2px 0 #000}
-.btn.burn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 #000}
-.bottom{height:64px;background:var(--concrete);border-top:1.5px solid #000;display:flex;align-items:center;justify-content:space-between;padding:0 10px}
-.burnstamp{width:56px;height:56px;border-radius:50%;background:var(--burn);border:3px solid var(--paper);outline:2px solid #000;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 4px rgba(255,58,30,.2)}
-.burnstamp span{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--paper);text-align:center;line-height:1}
-.burnstamp:active{transform:scale(.96)}
-.sheet{position:absolute;left:0;right:0;bottom:64px;background:var(--paper);color:var(--void);border-top:1.5px solid #000;border-radius:16px 16px 0 0;transform:translateY(110%);transition:.3s;max-height:70%;overflow:auto;z-index:10}
+.new{padding:16px;flex:1;display:flex;flex-direction:column;gap:16px}
+.new h1{font-family:'Space Grotesk',sans-serif;font-size:28px;line-height:32px;font-weight:700;letter-spacing:-.02em}
+.sub{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--ash)}
+.card{background:var(--bunker);border:1px solid var(--border);border-radius:24px;padding:16px}
+.stat{display:flex;align-items:center;gap:12px}
+.stat strong{font-family:'JetBrains Mono',monospace;font-size:32px;color:var(--lime)}
+.chip{padding:7px 12px;background:var(--bunker2);border:1px solid var(--border);border-radius:12px;font-size:11px;font-weight:700;color:var(--ash);cursor:pointer;font-family:'Instrument Sans',sans-serif}
+.btn{padding:10px 14px;border-radius:14px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer}
+.btn.paper{background:var(--paper);color:var(--void);border-color:var(--paper)}
+.btn.lime{background:var(--lime);color:var(--void);border-color:var(--lime)}
+.bottom{height:88px;background:var(--bunker);border-top:1px solid var(--border);border-radius:28px 28px 0 0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;position:relative}
+.vault{position:absolute;left:50%;top:-28px;transform:translateX(-50%);width:64px;height:64px;border-radius:50%;background:var(--void);border:2px solid var(--lime);display:grid;place-items:center;box-shadow:0 0 20px rgba(214,255,42,.3);cursor:pointer}
+.vault span{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.12em;color:var(--paper);text-align:center;line-height:1}
+.sheet{position:absolute;left:0;right:0;bottom:88px;background:var(--bunker);border-top:1px solid var(--border);border-radius:32px 32px 0 0;transform:translateY(110%);transition:.3s;max-height:70%;overflow:auto;z-index:10}
 .sheet.open{transform:translateY(0)}
-.handle{width:32px;height:4px;background:var(--soot);border-radius:99px;margin:8px auto}
-.grid{position:absolute;inset:0;background:rgba(11,15,18,.92);backdrop-filter:blur(6px);display:none;z-index:12;padding:16px}
+.grid{position:absolute;inset:0;background:rgba(6,8,11,.92);backdrop-filter:blur(6px);display:none;z-index:12;padding:16px}
 .grid.open{display:flex;flex-direction:column}
-.card2{background:var(--paper);border:1.5px solid #000;border-radius:4px;padding:10px;cursor:pointer}
-.card2.active{border-color:var(--burn);box-shadow:0 0 0 2px rgba(255,58,30,.2)}
 .drawer{position:absolute;inset:0;background:rgba(0,0,0,.5);display:none;justify-content:flex-end;z-index:13}
 .drawer.open{display:flex}
-.panel{width:78%;max-width:300px;background:var(--paper);color:var(--void);border-left:1.5px solid #000;display:flex;flex-direction:column}
-.toast{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);background:#000;color:var(--paper);padding:8px 12px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0;transition:.2s;pointer-events:none}
+.panel{width:78%;max-width:300px;background:var(--bunker);border-left:1px solid var(--border);display:flex;flex-direction:column}
+.toast{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);background:#000;color:var(--paper);padding:8px 12px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0;transition:.2s;pointer-events:none}
 .toast.show{opacity:1}
-.panel2{background:var(--paper);color:var(--void);border:1.5px solid #000;border-radius:4px;padding:16px;box-shadow:4px 4px 0 #000}
-.panel2 h2{font-family:'Instrument Serif',serif;font-size:20px}
-.kv{display:grid;grid-template-columns:1fr auto;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px}
+.panel2{background:var(--bunker);border:1px solid var(--border);border-radius:24px;padding:16px}
+.panel2 h2{font-family:'Space Grotesk',sans-serif;font-size:18px}
 </style>
 </head>
 <body>
-<div class="top"><span class="mono"><b>NETTRA</b> — BURN DOSSIER • com.zaaam.nettra</span><span class="mono">VOIDS 60% • PAPER 30% • BURN 10%</span></div>
+<div class="top"><span><b>NETTRA</b> — BUNKER HUD • com.zaaam.nettra</span><span>OLED • LIME • ANDROID NATIVE</span></div>
 <div class="wrap">
 <div class="left">
 <div class="phone" id="phone">
-<div class="bar" id="bar">
-<div class="stamp" id="stamp">✓</div>
-<div class="redacted" id="redacted" style="display:none"><i></i><i></i><i></i><span class="mono" style="font-size:10px;font-weight:700;color:#000" id="redCount">03 ███</span></div>
-<input id="addr" placeholder="Cari atau masukkan alamat —">
-<div class="badge" id="tabBadge">01</div>
-</div>
+<div class="status"><span>09:41</span><span style="display:flex;align-items:center;gap:6px"><span class="dot"></span> NETTRA</span></div>
+<div class="pill" id="pill"><span style="color:var(--ash)">◉</span><input id="addr" placeholder="Cari atau masukkan alamat"><div class="badge" id="badge">01</div></div>
 <div class="tabs" id="tabs"></div>
 <div class="viewport">
 <div class="view active" id="vnew">
 <div class="new">
-<h1>Tak seorang pun<br><i>mengikutimu.</i></h1>
-<div class="sub">PENCARIAN DUCKDUCKGO • HTTPS-FIRST AKTIF • v2026.08.21</div>
-<div class="card">
-<div class="search"><span class="mono" style="color:var(--soot)">⌕</span><input id="hero" placeholder="Cari atau masukkan alamat —"><span class="cursor"></span></div>
-<div class="sub" style="margin-top:8px">CEPAT</div>
-<div class="chips"><div class="chip" data-q="berita hari ini">berita hari ini</div><div class="chip" data-q="resep nasi goreng">resep nasi goreng</div><div class="chip" data-q="jadwal sholat">jadwal sholat</div></div>
-</div>
-<div class="stats">
-<div class="stat"><label>DIMUSNAHKAN</label><strong id="kill">00</strong><span class="mono" style="font-size:10px;color:var(--soot)">pelacak sesi ini</span></div>
-<div class="stat dark"><label>DOSSIER</label><strong style="font-size:18px;font-family:'JetBrains Mono',monospace">v2026.08.21</strong><span class="mono" style="font-size:10px;color:var(--soot)">CC BY-NC-SA 4.0</span></div>
-</div>
-<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn paper" onclick="go('https://contoh-berita.id/artikel/privasi')">BUKA DOSSIER NEWS</button><button class="btn burn" onclick="go('https://toko-contoh.com/promo')">SHOP 09 TRACKER</button><button class="btn paper" onclick="go('http://contoh-http.test')">HTTP TEST</button></div>
-<div class="card dark" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--soot)">Tip: ketik URL → navigasi. Ketik kata → <b style="color:var(--paper)">duckduckgo.com/?q=…</b> — redacted bar akan sensor tracker.</div>
+<h1>Sinyal aman.<br><span style="color:var(--ash);font-weight:400">Tidak ada yang mengikuti.</span></h1>
+<div class="sub">DUCKDUCKGO • HTTPS-FIRST • v2026.08.21</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><div class="chip" data-q="berita hari ini">berita hari ini</div><div class="chip" data-q="resep nasi goreng">resep nasi goreng</div><div class="chip" data-q="jadwal sholat">jadwal sholat</div></div>
+<div class="card stat"><div><div class="sub">PELACAK DIBLOKIR</div><strong id="kill">00</strong></div><div style="flex:1;height:3px;background:rgba(214,255,42,.2);border-radius:99px;margin-left:12px"><div id="bar" style="height:100%;width:0%;background:var(--lime);border-radius:99px;transition:.3s"></div></div></div>
+<div class="card" style="display:flex;gap:12px;align-items:center"><div style="width:48px;height:48px;background:var(--bunker2);border:1px solid var(--border);border-radius:12px;display:grid;place-items:center">🛰️</div><div><b style="font-family:'Space Grotesk',sans-serif">Recent Signals</b><div class="sub">Carousel horizontal — bukan grid web</div></div></div>
+<div style="display:flex;gap:8px"><button class="btn paper" onclick="go('https://contoh-berita.id/artikel/privasi')">BUKA NEWS</button><button class="btn lime" onclick="go('https://toko-contoh.com/promo')">SHOP 09</button><button class="btn paper" onclick="go('http://contoh-http.test')">HTTP</button></div>
 </div>
 </div>
 <div class="view" id="vresults"></div>
 <div class="view" id="vsite"></div>
 <div class="view" id="vhttp"></div>
-<div class="sheet" id="sheet"><div class="handle"></div><div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #000"><b class="serif" style="font-size:18px">Laporan Forensik</b><span style="cursor:pointer" onclick="closeSheet()">✕</span></div><div id="sheetBody" style="padding:14px 16px"></div></div>
-<div class="grid" id="grid"><div style="display:flex;justify-content:space-between;align-items:center"><b class="serif">DOSSIER — <span id="gcount">01</span></b><button class="btn paper" onclick="closeGrid()">TUTUP</button></div><div id="gridInner" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn burn" style="flex:1" onclick="newTab()">◉ TAB BARU</button><button class="btn paper" onclick="closeGrid()">LANJUT</button></div></div>
-<div class="drawer" id="drawer" onclick="if(event.target===this) closeDrawer()"><div class="panel"><div style="padding:14px;border-bottom:1.5px solid #000"><b class="mono" style="letter-spacing:.12em">NETTRA</b><div class="mono" style="font-size:10px;color:var(--soot)">com.zaaam.nettra • BURN DOSSIER</div></div><div style="flex:1;padding:10px;overflow:auto"><div class="mono" style="padding:10px;cursor:pointer" onclick="newTab();closeDrawer()">Tab baru</div><div class="mono" style="padding:10px;cursor:pointer" onclick="newTab(true);closeDrawer()">◉ Private Tab</div><div class="mono" style="padding:10px;cursor:pointer" onclick="openSheet()">Laporan Forensik</div><div class="mono" style="padding:10px;cursor:pointer;color:var(--burn)" onclick="openFire()">◉ BAKAR JEJAK</div></div><div class="mono" style="padding:12px;border-top:1.5px solid #000;font-size:10px;color:var(--soot)">Tracker: DuckDuckGo • CC BY-NC-SA 4.0 • v2026.08.21</div></div></div>
-<div class="toast" id="toast">BERSIH</div>
+<div class="sheet" id="sheet"><div style="width:32px;height:4px;background:var(--lime);border-radius:99px;margin:8px auto"></div><div style="padding:0 16px 16px"><div class="sub">LAPORAN FORENSIK</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;margin:4px 0">Forensik</h2><div id="sheetBody"></div></div></div>
+<div class="grid" id="grid"><div style="display:flex;justify-content:space-between;align-items:center"><b class="mono" style="font-family:'JetBrains Mono',monospace">DOSSIER — <span id="gcount">01</span></b><button class="btn paper" onclick="closeGrid()">TUTUP</button></div><div id="gridInner" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn lime" style="flex:1" onclick="newTab()">◉ TAB BARU</button><button class="btn paper" onclick="closeGrid()">LANJUT</button></div></div>
+<div class="drawer" id="drawer" onclick="if(event.target===this) closeDrawer()"><div class="panel"><div style="padding:14px;border-bottom:1px solid var(--border)"><b style="font-family:'Space Grotesk',sans-serif;letter-spacing:.08em">NETTRA</b><div class="sub">com.zaaam.nettra • BUNKER HUD</div></div><div style="flex:1;padding:10px;overflow:auto"><div class="sub" style="padding:10px;cursor:pointer" onclick="newTab();closeDrawer()">Tab baru</div><div class="sub" style="padding:10px;cursor:pointer" onclick="newTab(true);closeDrawer()">◉ Private</div><div class="sub" style="padding:10px;cursor:pointer;color:var(--lime)" onclick="openSheet()">Laporan Forensik</div><div class="sub" style="padding:10px;cursor:pointer;color:var(--ember)" onclick="openFire()">◉ BAKAR</div></div></div></div>
+<div class="toast" id="toast">BURN</div>
 </div>
-<div class="bottom"><span class="mono" style="cursor:pointer" onclick="toast('Back')">←</span><span class="mono" style="cursor:pointer" onclick="toast('Forward')">→</span><div class="burnstamp" onclick="openFire()"><span>◉<br>BURN</span></div><span class="mono" style="cursor:pointer" onclick="openGrid()">▦</span><span class="mono" style="cursor:pointer" onclick="openDrawer()">☰</span></div>
+<div class="bottom"><span style="cursor:pointer" onclick="toast('Back')">←</span><span style="cursor:pointer" onclick="toast('Forward')">→</span><div class="vault" onclick="openFire()"><span>◉<br>FIRE</span></div><span style="cursor:pointer" onclick="openGrid()">▦</span><span style="cursor:pointer" onclick="openDrawer()">☰</span></div>
 </div>
 </div>
 <div class="right">
-<div class="panel2"><h2>Burn Dossier — kenapa tidak jelek lagi</h2><p class="mono" style="font-size:11px;color:var(--soot);margin-top:6px">Satu hue Vermillion + Paper Bone + Void Ink. Tidak ada ungu M3, tidak ada Inter.</p><ul class="mono" style="font-size:12px;margin:10px 0 0 16px;color:var(--soot);line-height:1.6"><li>Redacted Bar: Paper Bone 4dp, blok ███ = jumlah tracker — bukti, bukan dekorasi</li><li>Dossier Stack: tumpang -8px + hard shadow, aktif Paper Bone + garis Vermillion 2px</li><li>Burn Stamp: 56dp lingkaran, border 3px Paper Bone — satu-satunya yang bulat</li><li>Privacy Report: Instrument Serif 48sp + mono forensik</li></ul></div>
-<div class="panel2" style="margin-top:12px"><h2>Interaksi (klik di phone)</h2><p class="mono" style="font-size:11px;color:var(--soot)">Ketik di bar → Enter → DDG. Klik tab → switch. ▦ → grid. ☰ → menu. ◉ BURN → Fire.</p><div style="display:flex;gap:8px;margin-top:10px"><button class="btn paper" onclick="document.getElementById('addr').focus()">Ketik</button><button class="btn burn" onclick="openSheet()">Forensik</button><button class="btn burn" onclick="openFire()">BURN</button></div></div>
+<div class="panel2"><h2>Bunker HUD — Android Native (bukan web)</h2><p class="sub" style="margin-top:6px">Void Black OLED + Lime signal + Bunker concrete. Pill 56dp, Bottom Bunker 28dp radius, Fire Vault 64dp.</p><ul class="sub" style="margin:10px 0 0 16px;line-height:1.6"><li>TopAppBar center wordmark + dot Lime secure</li><li>Search Pill mengambang 28dp — focus Lime ring + predictive back</li><li>Tab chips FilterChip dot 6dp + Lime active</li><li>Bottom Bunker: 5 slot, Fire Vault di tengah -28dp</li></ul></div>
+<div class="panel2" style="margin-top:12px"><h2>Coba di phone</h2><p class="sub">Ketik → Enter → DDG. Tap tab → switch. ▦ → grid. ◉ FIRE → Burn.</p><div style="display:flex;gap:8px;margin-top:10px"><button class="btn paper" onclick="document.getElementById('addr').focus()">Ketik</button><button class="btn lime" onclick="openSheet()">Forensik</button></div></div>
 </div>
 </div>
 <script>
 const $=s=>document.querySelector(s);
 let tabs=[{id:1,title:'Tab baru',url:'',type:'new',blocked:0,grade:'A',secure:true,private:false}], active=1, nid=2, total=0;
-const isUrl=s=>{s=s.trim(); if(!s||s.includes(' '))return false; if(/^https?:\/\//i.test(s))try{const u=new URL(s); if(!u.host) return false; if(u.port && (u.port<1||u.port>65535)) return false; return true}catch(e){return false}; if(/^localhost(:\d{1,5})?(\/.*)?$/i.test(s)){const m=s.match(/:(\d{1,5})/); if(m){const p=+m[1]; if(p<1||p>65535) return false} return true} if(!/^[a-z0-9.-]+\.[a-z]{2,}(:\d{1,5})?(\/.*)?$/i.test(s)) return false; const host=s.split('/')[0].split(':')[0]; if(host.includes('..')||host.startsWith('.')||host.startsWith('-'))return false; return true};
+const isUrl=s=>{s=s.trim(); if(!s||s.includes(' '))return false; if(/^https?:\/\//i.test(s))try{const u=new URL(s); if(!u.host) return false; if(u.port && (u.port<1||u.port>65535)) return false; return true}catch(e){return false}; if(/^localhost(:\d{1,5})?(\/.*)?$/i.test(s)){const m=s.match(/:(\d{1,5})/); if(m){const p=+m[1]; if(p<1||p>65535) return false} return true} if(!/^[a-z0-9.-]+\.[a-z]{2,}(:\d{1,5})?(\/.*)?$/i.test(s)) return false; return true};
 const ddg=q=>`https://duckduckgo.com/?q=${encodeURIComponent(q)}&t=nettra`;
-function renderTabs(){const el=$('#tabs'); el.innerHTML=''; tabs.forEach(t=>{const d=document.createElement('div'); d.className='tab'+(t.id===active?' active':''); d.innerHTML=`${t.private?'◉ ':''}${t.title} <span style="opacity:.5">✕</span>`; d.onclick=()=>switchTab(t.id); const x=d.querySelector('span'); x.onclick=e=>{e.stopPropagation(); closeTab(t.id)}; el.appendChild(d)}); const b=document.createElement('div'); b.className='tab'; b.textContent='+'; b.style.minWidth='36px'; b.style.textAlign='center'; b.onclick=newTab; el.appendChild(b); $('#tabBadge').textContent=String(tabs.length).padStart(2,'0'); $('#gcount').textContent=String(tabs.length).padStart(2,'0'); drawGrid(); updateBar()}
+function renderTabs(){const el=$('#tabs'); el.innerHTML=''; tabs.forEach(t=>{const d=document.createElement('div'); d.className='tab'+(t.id===active?' active':''); d.innerHTML=`<span class="dot2" style="background:${t.id===active?'var(--void)':'var(--ash)'}"></span>${t.private?'◉ ':''}${t.title} <span style="opacity:.5">✕</span>`; d.onclick=()=>switchTab(t.id); const x=d.querySelector('span:last-child'); x.onclick=e=>{e.stopPropagation(); closeTab(t.id)}; el.appendChild(d)}); const b=document.createElement('div'); b.className='tab'; b.textContent='+'; b.style.minWidth='32px'; b.style.justifyContent='center'; b.onclick=newTab; el.appendChild(b); $('#badge').textContent=String(tabs.length).padStart(2,'0'); $('#gcount').textContent=String(tabs.length).padStart(2,'0'); drawGrid(); updateBar()}
 function switchTab(id){active=id; const t=tabs.find(x=>x.id===id); $('#addr').value=t.url.startsWith('https://duckduckgo.com')?t.query||'':t.url; document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); const map={new:'vnew',results:'vresults',site:'vsite',http:'vhttp'}; $('#'+(map[t.type]||'vnew')).classList.add('active'); renderTabs()}
-function newTab(priv=false){const t={id:nid++,title:priv?'◉ Tab private':'Tab baru',url:'',type:'new',blocked:0,grade:'A',secure:true,private:priv}; tabs.push(t); switchTab(t.id)}
-function closeTab(id){if(tabs.length===1){toast('Min 1 tab');return} const c=tabs.find(x=>x.id===id); tabs=tabs.filter(x=>x.id!==id); total-=c.blocked; if(total<0) total=0; $('#kill').textContent=String(total).padStart(2,'0'); if(active===id) active=tabs[tabs.length-1].id; switchTab(active)}
-function go(raw){raw=raw.trim(); if(!raw) return; const idx=tabs.findIndex(x=>x.id===active); let cur=tabs[idx]; if(isUrl(raw)){let url=raw; if(!/^https?:\/\//i.test(url)) url='https://'+url; if(url.startsWith('http://')){const t={...cur,url,title:url,type:'http',secure:false,grade:'C',blocked:0}; total=total-cur.blocked; tabs[idx]=t; switchTab(active); return} const shop=url.includes('shop'), news=url.includes('news')||url.includes('berita'); const blocked=shop?9:news?7:3; const grade=blocked>6?'B':'A'; total=total-cur.blocked+blocked; const nt={...cur,url,title:new URL(url).host,type:'site',blocked,grade,secure:true}; tabs[idx]=nt; switchTab(active)} else {const u=ddg(raw); const nt={...cur,url:u,query:raw,title:`"${raw}"`,type:'results',blocked:2,grade:'A',secure:true}; total=total-cur.blocked+2; tabs[idx]=nt; switchTab(active)}}
-function updateBar(){const t=tabs.find(x=>x.id===active); const s=$('#stamp'); s.textContent=t.grade==='A'?'✓':t.grade==='B'?'!':'✕'; s.className='stamp'+(t.grade==='A'?' burn':''); const r=$('#redacted'); if(t.blocked>0){r.style.display='flex'; $('#redCount').textContent=String(t.blocked).padStart(2,'0')+' ███'} else r.style.display='none'; if(t.type==='results'){const v=$('#vresults'); v.innerHTML=`<div style="padding:14px"><div class="mono" style="font-size:10px;color:var(--soot)">DUCKDUCKGO — ${t.url}</div><div class="serif" style="font-size:18px;margin:8px 0">Hasil untuk “${t.query}”</div><div class="card" style="cursor:pointer" onclick="go('https://contoh-berita.id/artikel/privasi')"><div class="mono" style="font-size:10px;color:var(--burn)">https://contoh-berita.id — BERSIH</div><div class="serif" style="font-size:16px">Berita hari ini — tanpa tracker</div></div><div class="card" style="cursor:pointer;margin-top:8px" onclick="go('https://toko-contoh.com/promo')"><div class="mono" style="font-size:10px;color:var(--burn)">https://toko-contoh.com — 09 DIBLOKIR</div><div class="serif" style="font-size:16px">Toko online — 09 tracker dimusnahkan</div></div></div>`} if(t.type==='site'){const v=$('#vsite'); v.innerHTML=`<div style="background:var(--paper);color:var(--void);padding:10px;display:flex;justify-content:space-between"><b class="serif">${t.title}</b><span class="mono" style="background:var(--burn);color:var(--paper);padding:4px 6px;border-radius:2px">${String(t.blocked).padStart(2,'0')} DIBLOKIR</span></div><div style="background:#000;color:#fff;padding:8px;display:flex;gap:4px">${Array(Math.min(t.blocked,4)).fill(0).map(()=>' <i style="display:inline-block;width:32px;height:10px;background:#fff"></i>').join('')} — ${t.blocked} ███ DIMUSNAHKAN</div><div style="padding:14px"><div class="serif" style="font-size:22px">${t.url.includes('shop')?'Promo besar — sembilan pelacak mengintai':'Kenapa privasi itu pembakaran'}</div><div class="mono" style="font-size:10px;color:var(--soot);margin:6px 0">14:02:11 • HTTPS aktif • ${t.blocked} dimusnahkan</div><div style="font-size:14px;line-height:1.6;color:var(--paper)">Nettra memusnahkan di shouldInterceptRequest — request tidak pernah keluar.</div></div>`} if(t.type==='http'){const v=$('#vhttp'); v.innerHTML=`<div style="padding:14px"><div class="card"><div class="mono" style="font-size:9px;color:var(--soot)">KONEKSI TIDAK AMAN</div><div class="serif" style="font-size:18px;color:var(--void)">HTTP terdeteksi</div><div class="mono" style="font-size:10px;word-break:break-all">${t.url}</div><button class="btn burn" style="margin-top:10px" onclick="upgrade()">◉ UPGRADE KE HTTPS</button></div></div>`} $('#kill').textContent=String(total).padStart(2,'0')}
+function newTab(priv=false){const t={id:nid++,title:priv?'◉ Private':'Tab baru',url:'',type:'new',blocked:0,grade:'A',secure:true,private:priv}; tabs.push(t); switchTab(t.id)}
+function closeTab(id){if(tabs.length===1){toast('Min 1 tab');return} const c=tabs.find(x=>x.id===id); tabs=tabs.filter(x=>x.id!==id); total-=c.blocked; if(total<0) total=0; $('#kill').textContent=String(total).padStart(2,'0'); $('#bar').style.width=Math.min(100,total*8)+'%'; if(active===id) active=tabs[tabs.length-1].id; switchTab(active)}
+function go(raw){raw=raw.trim(); if(!raw) return; const idx=tabs.findIndex(x=>x.id===active); let cur=tabs[idx]; if(isUrl(raw)){let url=raw; if(!/^https?:\/\//i.test(url)) url='https://'+url; if(url.startsWith('http://')){const t={...cur,url,title:url,type:'http',secure:false,grade:'C',blocked:0}; total=total-cur.blocked; tabs[idx]=t; switchTab(active); return} const shop=url.includes('shop'), news=url.includes('news'); const blocked=shop?9:news?7:3; total=total-cur.blocked+blocked; const nt={...cur,url,title:new URL(url).host,type:'site',blocked,grade:blocked>6?'B':'A',secure:true}; tabs[idx]=nt; switchTab(active)} else {const u=ddg(raw); const nt={...cur,url:u,query:raw,title:`"${raw}"`,type:'results',blocked:2,grade:'A',secure:true}; total=total-cur.blocked+2; tabs[idx]=nt; switchTab(active)}}
+function updateBar(){const t=tabs.find(x=>x.id===active); const pill=$('#pill'); if(t.blocked>0) pill.style.borderColor='var(--lime)'; else pill.style.borderColor='var(--border)'; if(t.type==='results'){const v=$('#vresults'); v.innerHTML=`<div style="padding:14px"><div class="sub">DUCKDUCKGO — ${t.url}</div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;margin:8px 0">Hasil untuk “${t.query}”</div><div class="card" style="cursor:pointer" onclick="go('https://contoh-berita.id/artikel/privasi')"><div class="sub" style="color:var(--lime)">contoh-berita.id — BERSIH</div><div style="font-family:'Space Grotesk',sans-serif">Berita hari ini</div></div></div>`} if(t.type==='site'){const v=$('#vsite'); v.innerHTML=`<div style="background:var(--bunker);padding:10px;display:flex;justify-content:space-between"><b style="font-family:'Space Grotesk',sans-serif">${t.title}</b><span style="background:var(--lime);color:var(--void);padding:4px 8px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px">${String(t.blocked).padStart(2,'0')}</span></div><div style="padding:14px"><div style="font-family:'Space Grotesk',sans-serif;font-size:22px">${t.url.includes('shop')?'Sembilan pelacak mengintai':'Sinyal terenkripsi'}</div><div class="sub" style="margin:6px 0">${t.blocked} dimusnahkan • shouldInterceptRequest</div></div>`} if(t.type==='http'){const v=$('#vhttp'); v.innerHTML=`<div style="padding:14px"><div class="card"><div class="sub" style="color:var(--ember)">HTTP TIDAK AMAN</div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px">HTTP terdeteksi</div><div class="sub" style="word-break:break-all">${t.url}</div><button class="btn lime" style="margin-top:10px" onclick="upgrade()">◉ UPGRADE</button></div></div>`} $('#kill').textContent=String(total).padStart(2,'0'); $('#bar').style.width=Math.min(100,total*8)+'%'}
 function upgrade(){const t=tabs.find(x=>x.id===active); const https=t.url.replace(/^http:\/\//i,'https://'); const idx=tabs.findIndex(x=>x.id===active); total=total-t.blocked+1; tabs[idx]={...t,url:https,title:new URL(https).host,type:'site',secure:true,grade:'A',blocked:1}; switchTab(active)}
-function openSheet(){const t=tabs.find(x=>x.id===active); $('#sheetBody').innerHTML=`<div style="display:flex;gap:12px;align-items:center;background:var(--void);color:var(--paper);padding:12px;border-radius:4px"><div style="font-family:'Instrument Serif',serif;font-size:40px;color:var(--burn)">${String(t.blocked).padStart(2,'0')}</div><div><div class="mono" style="font-size:10px;letter-spacing:.12em">PELACAK DIMUSNAHKAN</div><div class="mono" style="font-size:10px;color:var(--soot)">${t.secure?'HTTPS AKTIF':'HTTP'} • v2026.08.21</div></div></div><div class="mono" style="font-size:11px;margin-top:10px;word-break:break-all">Situs: ${t.url||'—'}</div><div class="mono" style="font-size:10px;color:var(--soot);margin-top:4px">Angka dari shouldInterceptRequest, bukan statis.</div><button class="btn paper" style="margin-top:10px" onclick="closeSheet()">TUTUP</button>`; $('#sheet').classList.add('open')}
+function openSheet(){const t=tabs.find(x=>x.id===active); $('#sheetBody').innerHTML=`<div style="display:flex;gap:12px;align-items:center;background:var(--void);padding:12px;border-radius:24px"><div style="font-family:'JetBrains Mono',monospace;font-size:36px;color:var(--lime)">${String(t.blocked).padStart(2,'0')}</div><div><div class="sub">PELACAK DIBLOKIR</div><div class="sub">${t.secure?'HTTPS AKTIF':'HTTP'} • v2026.08.21</div></div></div><div class="sub" style="margin-top:10px;word-break:break-all">Situs: ${t.url||'—'}</div><button class="btn paper" style="margin-top:10px" onclick="closeSheet()">TUTUP</button>`; $('#sheet').classList.add('open')}
 function closeSheet(){$('#sheet').classList.remove('open')}
-function drawGrid(){const g=$('#gridInner'); g.innerHTML=''; tabs.forEach(t=>{const c=document.createElement('div'); c.className='card2'+(t.id===active?' active':''); c.innerHTML=`<div class="mono" style="font-size:9px;color:var(--soot)">${String(t.blocked).padStart(2,'0')} • ${t.grade}</div><div class="mono" style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div>`; c.onclick=()=>{switchTab(t.id); closeGrid()}; g.appendChild(c)})}
+function drawGrid(){const g=$('#gridInner'); g.innerHTML=''; tabs.forEach(t=>{const c=document.createElement('div'); c.style.cssText='background:var(--bunker);border:1px solid var(--border);border-radius:24px;padding:10px;cursor:pointer'+(t.id===active?';border-color:var(--lime)':''); c.innerHTML=`<div class="sub">${String(t.blocked).padStart(2,'0')} • ${t.grade}</div><div style="font-family:JetBrains Mono,monospace;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div>`; c.onclick=()=>{switchTab(t.id); closeGrid()}; g.appendChild(c)})}
 function openGrid(){$('#grid').classList.add('open')}
 function closeGrid(){$('#grid').classList.remove('open')}
 function openDrawer(){$('#drawer').classList.add('open')}
 function closeDrawer(){$('#drawer').classList.remove('open')}
-function openFire(){const n=tabs.length; if(confirm(`Bakar ${n} dossier → 1? Cookie & cache dimusnahkan, bookmark tetap.`)){tabs=[{id:nid++,title:'Tab baru',url:'',type:'new',blocked:0,grade:'A',secure:true,private:false}]; active=tabs[0].id; total=0; $('#kill').textContent='00'; $('#addr').value=''; $('#hero').value=''; document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); $('#vnew').classList.add('active'); renderTabs(); closeDrawer(); toast('◉ TERBAKAR — bookmark aman')}}
+function openFire(){if(confirm(`Bakar ${tabs.length} tab → 1?`)){tabs=[{id:nid++,title:'Tab baru',url:'',type:'new',blocked:0,grade:'A',secure:true,private:false}]; active=tabs[0].id; total=0; $('#kill').textContent='00'; $('#bar').style.width='0%'; $('#addr').value=''; switchTab(active); closeDrawer(); toast('◉ TERBAKAR')}}
 function toast(m){const t=$('#toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800)}
 document.getElementById('addr').addEventListener('keydown',e=>{if(e.key==='Enter') go(e.target.value)});
-document.getElementById('hero').addEventListener('keydown',e=>{if(e.key==='Enter') go(e.target.value)});
 document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>go(c.dataset.q)));
 renderTabs();
 </script>
