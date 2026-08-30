@@ -4,10 +4,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.zaaam.nettra.privacy.BlocklistSnapshot
 import com.zaaam.nettra.privacy.TrackerBlocker
 import com.zaaam.nettra.privacy.TrackerEntry
 import com.zaaam.nettra.search.SearchRouter
+import com.zaaam.nettra.tabs.FireWiper
+import com.zaaam.nettra.tabs.HistoryDao
+import com.zaaam.nettra.tabs.TabDao
+import kotlinx.coroutines.launch
 
 data class TabState(
     val id: Long,
@@ -21,7 +26,10 @@ data class TabState(
     val isPrivate: Boolean = false
 )
 
-class BrowserViewModel : ViewModel() {
+class BrowserViewModel(
+    private val historyDao: HistoryDao? = null,
+    private val tabDao: TabDao? = null
+) : ViewModel() {
 
     // Blocklist — bundled snapshot v2026.08.21 (fallback hardcoded kalau assets belum load)
     val trackerBlocker: TrackerBlocker = TrackerBlocker(
@@ -78,9 +86,12 @@ class BrowserViewModel : ViewModel() {
 
     fun closeTab(id: Long) {
         if (tabs.size == 1) return
+        val wasActive = activeId == id
         tabs = tabs.filter { it.id != id }
-        if (activeId == id) activeId = tabs.last().id
-        addressInput = activeTab.let { if (it.url.startsWith("https://duckduckgo.com")) it.query else it.url }
+        if (wasActive) {
+            activeId = tabs.last().id
+            addressInput = activeTab.let { if (it.url.startsWith("https://duckduckgo.com")) it.query else it.url }
+        }
     }
 
     fun navigate(rawInput: String) {
@@ -135,10 +146,24 @@ class BrowserViewModel : ViewModel() {
     fun requestFire() { showFireDialog = true }
     fun dismissFire() { showFireDialog = false }
     fun doFire() {
-        // Bookmark stays, history cleared — FireWiper would clear CookieManager/WebStorage in real WebView
+        // FireWiper wipe at storage level if DAOs injected; fallback to in-memory only for preview/tests
+        historyDao?.let { dao ->
+            viewModelScope.launch {
+                try {
+                    FireWiper.wipe(dao, tabDao, null)
+                } catch (_: Exception) { }
+            }
+        }
+        // Also clear tabs DB if only tabDao present without historyDao
+        if (historyDao == null && tabDao != null) {
+            viewModelScope.launch {
+                try { tabDao.clearAll() } catch (_: Exception) { }
+            }
+        }
         tabs = listOf(TabState(id = nextId++, title = "Tab baru", url = ""))
         activeId = tabs.first().id
         addressInput = ""
+        blockedTotal = 0
         showFireDialog = false
         showPrivacy = false
         showTabSwitcher = false

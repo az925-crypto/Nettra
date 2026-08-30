@@ -13,21 +13,46 @@ import kotlinx.coroutines.withContext
  * 02_ARCHITECTURE.md: core-tabs triggers wipe via core-webview storage.
  */
 object FireWiper {
-    suspend fun wipe(historyDao: HistoryDao, webViews: List<WebView>? = null) = withContext(Dispatchers.Main) {
-        // 1. Clear history (Room) — bookmark stays
-        withContext(Dispatchers.IO) { historyDao.clearAll() }
-        // 2. Clear cookies
-        CookieManager.getInstance().apply {
-            removeAllCookies(null)
-            flush()
+    suspend fun wipe(
+        historyDao: HistoryDao,
+        tabDao: TabDao?,
+        webViews: List<WebView>?
+    ) {
+        // 1. Clear history (Room) + tabs on IO — offloaded from Main
+        withContext(Dispatchers.IO) {
+            historyDao.clearAll()
+            tabDao?.clearAll()
         }
-        // 3. Clear WebStorage (localStorage, etc.)
-        WebStorage.getInstance().deleteAllData()
+        // 2. Clear cookies async — removeAllCookies is async, don't block
+        withContext(Dispatchers.Main) {
+            CookieManager.getInstance().removeAllCookies(null)
+        }
+        // 3. Flush + WebStorage delete offloaded to IO (blocking disk I/O)
+        withContext(Dispatchers.IO) {
+            CookieManager.getInstance().flush()
+            WebStorage.getInstance().deleteAllData()
+        }
         // 4. Clear each WebView cache/storage if provided
-        webViews?.forEach { wv ->
-            wv.clearCache(true)
-            wv.clearHistory()
-            wv.clearFormData()
+        // clearHistory/clearFormData must be on Main; clearCache(true) is blocking -> offload inner disk work
+        if (webViews != null) {
+            withContext(Dispatchers.Main) {
+                webViews.forEach { wv ->
+                    wv.clearHistory()
+                    wv.clearFormData()
+                }
+            }
+            // clearCache(true) does disk I/O — call on Main but not block it synchronously;
+            // we dispatch the heavy part via IO: post to Main from IO to keep thread affinity
+            withContext(Dispatchers.IO) {
+                withContext(Dispatchers.Main) {
+                    webViews.forEach { it.clearCache(true) }
+                }
+            }
         }
+    }
+
+    // Backward compat overload
+    suspend fun wipe(historyDao: HistoryDao, webViews: List<WebView>? = null) {
+        wipe(historyDao, null, webViews)
     }
 }

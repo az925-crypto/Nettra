@@ -19,8 +19,12 @@ class NettraWebViewClient(
 
     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
         val url = request?.url?.toString() ?: return null
-        // 1. Tracker blocking
-        if (trackerBlocker?.shouldBlock(url) == true) {
+        // Do not block main-frame document — prevents blank page on first-party navigation
+        if (request?.isForMainFrame == true) return null
+        if (view?.url != null && url == view.url) return null
+        // 1. Tracker blocking with first-party allow (compare request host vs page host)
+        val pageUrl = view?.url
+        if (trackerBlocker?.shouldBlock(url, pageUrl) == true) {
             onTrackerBlocked(url)
             // Return empty response to block — request never leaves device for tracker
             return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
@@ -30,12 +34,14 @@ class NettraWebViewClient(
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val url = request?.url?.toString() ?: return false
-        // HTTPS-First: if http and https version exists, upgrade
+        // HTTPS-First enforce: upgrade http to https and block cleartext
         if (url.startsWith("http://")) {
             val https = url.replaceFirst("http://", "https://")
-            // In real impl, check if https is reachable before upgrading; for MVP we upgrade directly
-            // Caller can intercept via callback for warning UI
-            if (https != url) onHttpsUpgrade(https)
+            if (https != url) {
+                onHttpsUpgrade(https)
+                view?.loadUrl(https)
+                return true
+            }
         }
         return false
     }

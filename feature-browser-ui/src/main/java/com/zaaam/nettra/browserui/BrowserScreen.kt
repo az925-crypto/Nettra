@@ -3,7 +3,6 @@ package com.zaaam.nettra.browserui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +14,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -29,6 +31,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,13 +40,31 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BrowserScreen(vm: BrowserViewModel = remember { BrowserViewModel() }) {
+fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
+    // Derived state to avoid recomposition on unrelated vm changes
+    val activeTab by remember { derivedStateOf { vm.activeTab } }
+    val tabCount by remember { derivedStateOf { vm.tabs.size } }
+
+    // Stable lambdas to avoid recomposition
+    val onSwitchTab: (Long) -> Unit = remember(vm) { { id -> vm.switchTab(id) } }
+    val onCloseTab: (Long) -> Unit = remember(vm) { { id -> vm.closeTab(id) } }
+    val onNewTab: () -> Unit = remember(vm) { { vm.newTab() } }
+    val onNewPrivateTab: () -> Unit = remember(vm) { { vm.newTab(private = true) } }
+    val onAddressChange: (String) -> Unit = remember(vm) { { v -> vm.onAddressChange(v) } }
+    val onSubmit: () -> Unit = remember(vm) { { vm.navigate(vm.addressInput) } }
+    val onPrivacyClick: () -> Unit = remember(vm) { { vm.togglePrivacy(true) } }
+    val onTabsClick: () -> Unit = remember(vm) { { vm.toggleTabSwitcher(true) } }
+    val onMenuClick: () -> Unit = remember(vm) { { vm.toggleMenu(true) } }
+    val onFireClick: () -> Unit = remember(vm) { { vm.requestFire() } }
+
     NettraTheme {
         Box(
             modifier = Modifier
@@ -55,36 +77,36 @@ fun BrowserScreen(vm: BrowserViewModel = remember { BrowserViewModel() }) {
                 // Address bar
                 AddressBar(
                     input = vm.addressInput,
-                    onInputChange = vm::onAddressChange,
-                    onSubmit = { vm.navigate(vm.addressInput) },
-                    activeTab = vm.activeTab,
-                    tabCount = vm.tabs.size,
-                    onPrivacyClick = { vm.togglePrivacy(true) },
-                    onTabsClick = { vm.toggleTabSwitcher(true) },
-                    onMenuClick = { vm.toggleMenu(true) }
+                    onInputChange = onAddressChange,
+                    onSubmit = onSubmit,
+                    activeTab = activeTab,
+                    tabCount = tabCount,
+                    onPrivacyClick = onPrivacyClick,
+                    onTabsClick = onTabsClick,
+                    onMenuClick = onMenuClick
                 )
-                // Tab strip FR-1
+                // Tab strip FR-1 with LazyRow + keys for performance
                 TabStrip(
                     tabs = vm.tabs,
                     activeId = vm.activeId,
-                    onSwitch = vm::switchTab,
-                    onClose = vm::closeTab,
-                    onNewTab = { vm.newTab() }
+                    onSwitch = onSwitchTab,
+                    onClose = onCloseTab,
+                    onNewTab = onNewTab
                 )
                 // Main viewport
                 Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFF0E141E))) {
-                    when (vm.activeTab.type) {
+                    when (activeTab.type) {
                         "newtab" -> NewTabContent(
                             blockedTotal = vm.blockedTotal,
                             version = vm.trackerBlocker.version,
-                            onChip = { q -> vm.onAddressChange(q); vm.navigate(q) },
-                            onDemo = vm::navigate,
-                            onSearch = { q -> vm.navigate(q) }
+                            onChip = remember(vm) { { q: String -> vm.onAddressChange(q); vm.navigate(q) } },
+                            onDemo = remember(vm) { { url: String -> vm.navigate(url) } },
+                            onSearch = remember(vm) { { q: String -> vm.navigate(q) } }
                         )
-                        "results" -> ResultsContent(query = vm.activeTab.query, onOpen = vm::navigate)
-                        "site" -> SiteContent(tab = vm.activeTab, onTrackerClick = { vm.togglePrivacy(true) })
-                        "http" -> HttpWarningContent(url = vm.activeTab.url, onUpgrade = vm::upgradeToHttps, onContinue = { /* keep http */ })
-                        else -> NewTabContent(vm.blockedTotal, vm.trackerBlocker.version, { q -> vm.onAddressChange(q); vm.navigate(q) }, vm::navigate) { q -> vm.navigate(q) }
+                        "results" -> ResultsContent(query = activeTab.query, onOpen = remember(vm) { { url: String -> vm.navigate(url) } })
+                        "site" -> SiteContent(tab = activeTab, onTrackerClick = onPrivacyClick)
+                        "http" -> HttpWarningContent(url = activeTab.url, onUpgrade = remember(vm) { { vm.upgradeToHttps() } }, onContinue = { /* keep http */ })
+                        else -> NewTabContent(vm.blockedTotal, vm.trackerBlocker.version, remember(vm) { { q: String -> vm.onAddressChange(q); vm.navigate(q) } }, remember(vm) { { url: String -> vm.navigate(url) } }) { q -> vm.navigate(q) }
                     }
                     // Optional real WebView overlay for actual loading (behind mock content for now, but functional)
                     // Uncomment to load real URL:
@@ -93,6 +115,12 @@ fun BrowserScreen(vm: BrowserViewModel = remember { BrowserViewModel() }) {
                     //     WebView(ctx).apply {
                     //       webViewClient = NettraWebViewClient(vm.trackerBlocker, onTrackerBlocked = { vm.onTrackerBlocked() })
                     //       settings.javaScriptEnabled = true
+                    //       settings.allowFileAccess = false
+                    //       settings.allowContentAccess = false
+                    //       settings.allowFileAccessFromFileURLs = false
+                    //       settings.allowUniversalAccessFromFileURLs = false
+                    //       settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    //       settings.domStorageEnabled = true
                     //       loadUrl(vm.activeTab.url)
                     //     }
                     //   }, modifier = Modifier.fillMaxSize())
@@ -102,9 +130,9 @@ fun BrowserScreen(vm: BrowserViewModel = remember { BrowserViewModel() }) {
                 BottomBar(
                     onBack = {},
                     onForward = {},
-                    onFire = vm::requestFire,
-                    onTabs = { vm.toggleTabSwitcher(true) },
-                    onMenu = { vm.toggleMenu(true) }
+                    onFire = onFireClick,
+                    onTabs = onTabsClick,
+                    onMenu = onMenuClick
                 )
             }
 
@@ -116,16 +144,16 @@ fun BrowserScreen(vm: BrowserViewModel = remember { BrowserViewModel() }) {
                     containerColor = NettraSurface,
                     contentColor = NettraText
                 ) {
-                    PrivacyReportSheet(tab = vm.activeTab, version = vm.trackerBlocker.version) { vm.togglePrivacy(false) }
+                    PrivacyReportSheet(tab = activeTab, version = vm.trackerBlocker.version) { vm.togglePrivacy(false) }
                 }
             }
 
             // Fire dialog FR-6
             if (vm.showFireDialog) {
                 FireDialog(
-                    tabCount = vm.tabs.size,
-                    onDismiss = vm::dismissFire,
-                    onConfirm = vm::doFire
+                    tabCount = tabCount,
+                    onDismiss = remember(vm) { { vm.dismissFire() } },
+                    onConfirm = remember(vm) { { vm.doFire() } }
                 )
             }
 
@@ -134,11 +162,11 @@ fun BrowserScreen(vm: BrowserViewModel = remember { BrowserViewModel() }) {
                 TabSwitcherSheet(
                     tabs = vm.tabs,
                     activeId = vm.activeId,
-                    onSwitch = vm::switchTab,
-                    onClose = vm::closeTab,
-                    onNewTab = { vm.newTab() },
-                    onPrivateTab = { vm.newTab(private = true) },
-                    onDismiss = { vm.toggleTabSwitcher(false) }
+                    onSwitch = onSwitchTab,
+                    onClose = onCloseTab,
+                    onNewTab = remember(vm) { { vm.newTab(); vm.toggleTabSwitcher(false) } },
+                    onPrivateTab = remember(vm) { { vm.newTab(private = true); vm.toggleTabSwitcher(false) } },
+                    onDismiss = remember(vm) { { vm.toggleTabSwitcher(false) } }
                 )
             }
 
@@ -238,6 +266,8 @@ private fun AddressBar(
             onValueChange = onInputChange,
             placeholder = { Text("Cari atau masukkan alamat", color = NettraDim, fontSize = 14.sp) },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
@@ -256,20 +286,17 @@ private fun AddressBar(
         ) { Text("$tabCount", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NettraMuted) }
         Text("  ☰", modifier = Modifier.clickable { onMenuClick() }.padding(6.dp), color = NettraMuted, fontSize = 14.sp)
     }
-    // Hidden submit via IME — for now extra button
-    // The parent handles onSubmit via keyboard; simplified here
 }
 
 @Composable
 private fun TabStrip(tabs: List<TabState>, activeId: Long, onSwitch: (Long) -> Unit, onClose: (Long) -> Unit, onNewTab: () -> Unit) {
-    Row(
+    LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        tabs.forEach { t ->
+        items(tabs, key = { it.id }) { t ->
             val isActive = t.id == activeId
             Row(
                 modifier = Modifier
@@ -287,24 +314,27 @@ private fun TabStrip(tabs: List<TabState>, activeId: Long, onSwitch: (Long) -> U
                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
                     color = if (isActive) NettraText else NettraMuted,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 90.dp)
+                    modifier = Modifier.width(90.dp)
                 )
                 Text(" ✕", modifier = Modifier.clickable { onClose(t.id) }.padding(start = 6.dp), color = NettraMuted, fontSize = 10.sp)
             }
         }
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .border(1.dp, NettraBorder, CircleShape)
-                .clickable { onNewTab() },
-            contentAlignment = Alignment.Center
-        ) { Text("+", color = NettraMuted) }
+        item(key = "new_tab_btn") {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, NettraBorder, CircleShape)
+                    .clickable { onNewTab() },
+                contentAlignment = Alignment.Center
+            ) { Text("+", color = NettraMuted) }
+        }
     }
 }
 
 @Composable
 private fun NewTabContent(blockedTotal: Int, version: String, onChip: (String) -> Unit, onDemo: (String) -> Unit, onSearch: (String) -> Unit) {
+    val fireBrush = remember { Brush.linearGradient(listOf(NettraFire, Color(0xFFFF8A1A), NettraYellow)) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -317,7 +347,7 @@ private fun NewTabContent(blockedTotal: Int, version: String, onChip: (String) -
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Brush.linearGradient(listOf(NettraFire, Color(0xFFFF8A1A), NettraYellow))),
+                    .background(fireBrush),
                 contentAlignment = Alignment.Center
             ) { Text("🔥", fontSize = 20.sp) }
             Column(modifier = Modifier.padding(start = 12.dp)) {
@@ -416,13 +446,14 @@ private fun HttpWarningContent(url: String, onUpgrade: () -> Unit, onContinue: (
 
 @Composable
 private fun BottomBar(onBack: () -> Unit, onForward: () -> Unit, onFire: () -> Unit, onTabs: () -> Unit, onMenu: () -> Unit) {
+    val fireBrush = remember { Brush.verticalGradient(listOf(Color(0xFFFF6A1A), NettraFire)) }
     Row(
         modifier = Modifier.fillMaxWidth().height(64.dp).background(Color(0xE80A0E14)).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row { Text("←", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).clickable { onBack() }.padding(12.dp), color = NettraMuted); Text("→", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).clickable { onForward() }.padding(12.dp), color = NettraMuted) }
         Box(
-            modifier = Modifier.size(56.dp).clip(CircleShape).background(Brush.verticalGradient(listOf(Color(0xFFFF6A1A), NettraFire))).border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape).clickable { onFire() },
+            modifier = Modifier.size(56.dp).clip(CircleShape).background(fireBrush).border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape).clickable { onFire() },
             contentAlignment = Alignment.Center
         ) { Text("🔥", fontSize = 22.sp) }
         Row { Text("▦", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).clickable { onTabs() }.padding(12.dp), color = NettraMuted); Text("☰", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).clickable { onMenu() }.padding(12.dp), color = NettraMuted) }
@@ -482,17 +513,19 @@ private fun TabSwitcherSheet(tabs: List<TabState>, activeId: Long, onSwitch: (Lo
                 Text("Tutup", modifier = Modifier.clickable { onDismiss() }.padding(8.dp), color = NettraMuted, fontSize = 13.sp)
             }
             tabs.forEach { t ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onSwitch(t.id) },
-                    colors = CardDefaults.cardColors(containerColor = if (t.id == activeId) NettraSurface3 else NettraSurface2),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("${if (t.isPrivate) "🕶️ " else ""}${t.title}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NettraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("${t.blocked} blocked · ${t.grade} ${if (t.secure) "🔒" else "⚠️"}", fontSize = 11.sp, color = NettraMuted)
+                androidx.compose.runtime.key(t.id) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onSwitch(t.id) },
+                        colors = CardDefaults.cardColors(containerColor = if (t.id == activeId) NettraSurface3 else NettraSurface2),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("${if (t.isPrivate) "🕶️ " else ""}${t.title}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NettraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${t.blocked} blocked · ${t.grade} ${if (t.secure) "🔒" else "⚠️"}", fontSize = 11.sp, color = NettraMuted)
+                            }
+                            Text("✕", modifier = Modifier.clickable { onClose(t.id) }.padding(8.dp), color = NettraMuted)
                         }
-                        Text("✕", modifier = Modifier.clickable { onClose(t.id) }.padding(8.dp), color = NettraMuted)
                     }
                 }
             }

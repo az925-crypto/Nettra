@@ -22,8 +22,17 @@ interface HistoryDao {
     @Query("DELETE FROM history") suspend fun clearAll()
 }
 
+@Dao
+interface TabDao {
+    @Query("SELECT * FROM tabs ORDER BY createdAt DESC")
+    suspend fun getAll(): List<TabEntity>
+    @Insert suspend fun insert(t: TabEntity)
+    @Query("DELETE FROM tabs") suspend fun clearAll()
+}
+
 @Database(entities = [BookmarkEntity::class, HistoryEntity::class, TabEntity::class], version = 1, exportSchema = true)
 abstract class NettraDatabase : RoomDatabase() {
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun historyDao(): HistoryDao
+    abstract fun tabDao(): TabDao
 }

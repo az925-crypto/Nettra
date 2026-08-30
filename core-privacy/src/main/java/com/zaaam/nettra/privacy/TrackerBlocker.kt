@@ -11,10 +11,14 @@ import kotlinx.serialization.json.Json
 class TrackerBlocker(
     private val blocklist: BlocklistSnapshot
 ) {
-    fun shouldBlock(requestUrl: String): Boolean {
+    fun shouldBlock(requestUrl: String, pageUrl: String? = null): Boolean {
         val host = try { java.net.URL(requestUrl).host.lowercase() } catch (_: Exception) { return false }
-        // Allow first-party: exact host already checked as tracker list is third-party only.
-        // We do simple suffix match for tracker domains.
+        // First-party allow: if request host == page host, do not block top-level navigation
+        if (pageUrl != null) {
+            val pageHost = try { java.net.URL(pageUrl).host.lowercase() } catch (_: Exception) { null }
+            if (pageHost != null && host == pageHost) return false
+        }
+        // We do simple suffix match for tracker domains (third-party only)
         return blocklist.trackers.any { tracker ->
             host == tracker.domain || host.endsWith(".${tracker.domain}")
         }
