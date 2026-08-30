@@ -131,23 +131,34 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                         NavigationBarItem(
                             selected = false,
                             onClick = {},
-                            icon = { Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = NettraColors.Muted, modifier = Modifier.size(20.dp)) },
-                            label = { Text("Back", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, color = NettraColors.Muted)) },
-                            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent, selectedIconColor = NettraColors.Muted, unselectedIconColor = NettraColors.Muted)
+                            icon = {
+                                Box(
+                                    modifier = Modifier.size(32.dp).clip(CircleShape).background(NettraColors.Surface2).border(1.dp, NettraColors.Border, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = NettraColors.Text, modifier = Modifier.size(16.dp)) }
+                            },
+                            label = { Text("Kembali", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, color = NettraColors.Muted, fontWeight = FontWeight.Bold)) },
+                            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
                         )
                         NavigationBarItem(
                             selected = false,
                             onClick = { vm.toggleTabSwitcher(true) },
                             icon = {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Filled.Tab, contentDescription = "Tabs", tint = NettraColors.Muted, modifier = Modifier.size(20.dp))
-                                    Box(
-                                        modifier = Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-4).dp)
-                                            .clip(RoundedCornerShape(8.dp)).background(NettraColors.Lime).padding(horizontal = 4.dp, vertical = 1.dp)
-                                    ) { Text(String.format("%02d", tabCount), style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp, color = NettraColors.Bg, fontWeight = FontWeight.Bold)) }
+                                // Tabs pill — count + icon together, not badge on top
+                                Row(
+                                    modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(NettraColors.Surface2).border(1.dp, NettraColors.Border, RoundedCornerShape(16.dp)).padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Stacked tabs icon — two overlapping rounded rects
+                                    Box(modifier = Modifier.size(14.dp)) {
+                                        Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(2.dp)).background(NettraColors.Muted).align(Alignment.BottomStart).border(1.dp, NettraColors.Surface2, RoundedCornerShape(2.dp)))
+                                        Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(2.dp)).background(NettraColors.Text).align(Alignment.TopEnd).border(1.dp, NettraColors.Surface2, RoundedCornerShape(2.dp)))
+                                    }
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(String.format("%02d", tabCount), style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, color = NettraColors.Text, fontWeight = FontWeight.Bold))
                                 }
                             },
-                            label = { Text("Tabs", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, color = NettraColors.Muted)) },
+                            label = { Text("Tab", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, color = NettraColors.Muted)) },
                             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
                         )
                         NavigationBarItem(
