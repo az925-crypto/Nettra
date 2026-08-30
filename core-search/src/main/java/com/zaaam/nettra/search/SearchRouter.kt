@@ -14,7 +14,7 @@ object SearchRouter {
 
     /**
      * Very conservative URL detection to avoid misclassifying queries as URLs.
-     * Accepts: http(s)://*, localhost, and domain-like with dot + valid TLD, no spaces.
+     * Accepts: http(s) colon slash slash, localhost, and domain-like with dot + valid TLD, no spaces.
      */
     fun isValidUrl(input: String): Boolean {
         val s = input.trim()
