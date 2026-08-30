@@ -80,11 +80,11 @@ body{font-family:system-ui,sans-serif;background:#000;color:var(--paper);min-hei
 <div class="drawer" id="drawer" onclick="if(event.target===this) closeDrawer()"><div class="panel"><div style="padding:14px;border-bottom:1px solid var(--border)"><b>NETTRA</b><div class="mono" style="font-size:10px;color:var(--muted)">com.zaaam.nettra</div></div><div style="flex:1;padding:10px;overflow:auto"><div class="mono" style="padding:10px;cursor:pointer" onclick="newTab();closeDrawer()">Tab baru</div><div class="mono" style="padding:10px;cursor:pointer" onclick="newTab(true);closeDrawer()">Private</div><div class="mono" style="padding:10px;cursor:pointer;color:var(--lime)" onclick="openSheet()">Forensik</div><div class="mono" style="padding:10px;cursor:pointer;color:var(--burn)" onclick="openFire()">Bakar Sesi</div></div></div></div>
 <div class="toast" id="toast">BURN</div>
 </div>
-<div class="navbar">
-<div class="navitem" onclick="toast('Back')"><i>←</i><span>Back</span></div>
-<div class="navitem" onclick="openGrid()"><i style="position:relative"><span style="position:absolute;top:-4px;right:-6px;background:var(--lime);color:var(--bg);font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 4px;border-radius:99px" id="navBadge">01</span>▦</i><span>Tabs</span></div>
-<div class="navitem" onclick="openFire()"><div class="vault"><span>🔥</span></div><span style="color:var(--lime)">Fire</span></div>
-<div class="navitem" onclick="openDrawer()"><i>☰</i><span>Menu</span></div>
+<div class="navbar" style="border:1px solid var(--border);border-radius:24px 24px 0 0;overflow:hidden">
+<div class="navitem" onclick="toast('Back')"><i style="font-size:20px">←</i><span style="color:var(--muted)">Back</span></div>
+<div class="navitem" onclick="openGrid()"><div style="position:relative"><i style="font-size:20px">▦</i><span style="position:absolute;top:-6px;right:-10px;background:var(--lime);color:var(--bg);font-family:'JetBrains Mono',monospace;font-size:7px;font-weight:700;padding:2px 4px;border-radius:8px" id="navBadge">01</span></div><span style="color:var(--muted)">Tabs</span></div>
+<div class="navitem" onclick="openFire()" style="gap:2px"><div style="width:52px;height:52px;border-radius:50%;background:var(--lime);border:1px solid var(--bg);display:grid;place-items:center;box-shadow:0 0 0 2px var(--lime)"><span style="font-size:22px;color:var(--bg)">🔥</span></div><span style="color:var(--lime);font-weight:700">Bakar</span></div>
+<div class="navitem" onclick="openDrawer()"><i style="font-size:20px">☰</i><span style="color:var(--muted)">Menu</span></div>
 </div>
 </div>
 </div>

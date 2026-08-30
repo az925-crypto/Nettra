@@ -102,45 +102,57 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                 )
             },
             bottomBar = {
-                // 2026 bottom nav — 4 items + Fire vault, icon+label, thumb zone
-                Box(modifier = Modifier.background(NettraColors.Surface).padding(bottom = 0.dp)) {
+                // 2026 bottom nav — 4 items + Fire, thumb zone, Fire as lime-filled FAB (not ring)
+                Box(
+                    modifier = Modifier
+                        .background(NettraColors.Surface)
+                        .border(1.dp, NettraColors.Border, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                ) {
                     NavigationBar(
-                        containerColor = NettraColors.Surface,
+                        containerColor = Color.Transparent,
                         tonalElevation = 0.dp,
-                        modifier = Modifier.clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).border(1.dp, NettraColors.Border, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         NavigationBarItem(
                             selected = false,
                             onClick = {},
-                            icon = { Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = NettraColors.Muted) },
-                            label = { Text("Back", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp)) },
-                            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+                            icon = { Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = NettraColors.Muted, modifier = Modifier.size(20.dp)) },
+                            label = { Text("Back", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, color = NettraColors.Muted)) },
+                            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent, selectedIconColor = NettraColors.Muted, unselectedIconColor = NettraColors.Muted)
                         )
                         NavigationBarItem(
                             selected = false,
                             onClick = { vm.toggleTabSwitcher(true) },
-                            icon = { BadgedIcon(count = tabCount) },
-                            label = { Text("Tabs", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp)) },
+                            icon = {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Filled.Tab, contentDescription = "Tabs", tint = NettraColors.Muted, modifier = Modifier.size(20.dp))
+                                    Box(
+                                        modifier = Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-4).dp)
+                                            .clip(RoundedCornerShape(8.dp)).background(NettraColors.Lime).padding(horizontal = 4.dp, vertical = 1.dp)
+                                    ) { Text(String.format("%02d", tabCount), style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp, color = NettraColors.Bg, fontWeight = FontWeight.Bold)) }
+                                }
+                            },
+                            label = { Text("Tabs", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, color = NettraColors.Muted)) },
                             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
                         )
-                        // Fire vault — centered, not FAB blocking content, but nav item with lime ring
                         NavigationBarItem(
                             selected = false,
                             onClick = vm::requestFire,
                             icon = {
                                 Box(
-                                    modifier = Modifier.size(48.dp).clip(CircleShape).background(NettraColors.Bg).border(2.dp, NettraColors.Lime, CircleShape),
+                                    modifier = Modifier.size(52.dp).clip(CircleShape).background(NettraColors.Lime).border(1.dp, NettraColors.Bg, CircleShape),
                                     contentAlignment = Alignment.Center
-                                ) { Icon(Icons.Filled.Whatshot, contentDescription = "Fire", tint = NettraColors.Lime, modifier = Modifier.size(22.dp)) }
+                                ) { Icon(Icons.Filled.Whatshot, contentDescription = "Fire", tint = NettraColors.Bg, modifier = Modifier.size(24.dp)) }
                             },
-                            label = { Text("Fire", style = MaterialTheme.typography.labelSmall.copy(color = NettraColors.Lime, fontSize = 9.sp)) },
+                            label = { Text("Bakar", style = MaterialTheme.typography.labelSmall.copy(color = NettraColors.Lime, fontSize = 9.sp, fontWeight = FontWeight.Bold)) },
                             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
                         )
                         NavigationBarItem(
                             selected = false,
                             onClick = { vm.toggleMenu(true) },
-                            icon = { Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = NettraColors.Muted) },
-                            label = { Text("Menu", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp)) },
+                            icon = { Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = NettraColors.Muted, modifier = Modifier.size(20.dp)) },
+                            label = { Text("Menu", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, color = NettraColors.Muted)) },
                             colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
                         )
                     }
