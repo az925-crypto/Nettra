@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -479,6 +480,7 @@ private fun FireDialog(tabCount: Int, onDismiss: () -> Unit, onConfirm: () -> Un
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TabSwitcherSheet(tabs: List<TabState>, activeId: Long, onSwitch: (Long) -> Unit, onClose: (Long) -> Unit, onNewTab: () -> Unit, onPrivateTab: () -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = NettraSurface, contentColor = NettraText) {
