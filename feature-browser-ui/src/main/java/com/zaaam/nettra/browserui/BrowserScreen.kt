@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -38,6 +40,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.viewinterop.AndroidView
+import com.zaaam.nettra.webview.NettraWebViewClient
 import androidx.compose.ui.draw.scale
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -242,22 +246,47 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                         Box(modifier = Modifier.size(32.dp).clip(CircleShape).border(1.dp, NettraColors.Border, CircleShape).clickable { vm.newTab() }, contentAlignment = Alignment.Center) { Text("+", color = NettraColors.Muted, fontWeight = FontWeight.Bold) }
                     }
                 }
-                // Content — AnimatedContent biar tidak kaku (spring)
+                // Content — real WebView for site/results/http, newtab mock
                 Box(modifier = Modifier.weight(1f).fillMaxWidth().background(NettraColors.Bg)) {
-                    AnimatedContent(
-                        targetState = activeTab,
-                        transitionSpec = {
-                            (slideInVertically(tween(220, delayMillis = 20)) + fadeIn(tween(220))) togetherWith (slideOutVertically(tween(180)) + fadeOut(tween(180)))
-                        },
-                        label = "tabContent"
-                    ) { tab ->
-                        when (tab.type) {
-                            "newtab" -> AndroidNewTab(blockedTotal = vm.blockedTotal, version = vm.trackerBlocker.version, onChip = { q -> vm.onAddressChange(q); vm.navigate(q) }, onDemo = vm::navigate)
-                            "results" -> AndroidResults(query = tab.query, onOpen = vm::navigate)
-                            "site" -> AndroidSite(tab = tab, onTrackerClick = { vm.togglePrivacy(true) })
-                            "http" -> AndroidHttpWarning(url = tab.url, onUpgrade = vm::upgradeToHttps)
-                            else -> AndroidNewTab(vm.blockedTotal, vm.trackerBlocker.version, { q -> vm.onAddressChange(q); vm.navigate(q) }, vm::navigate)
+                    if (activeTab.type == "newtab") {
+                        AnimatedContent(
+                            targetState = activeTab,
+                            transitionSpec = {
+                                (slideInVertically(tween(220, delayMillis = 20)) + fadeIn(tween(220))) togetherWith (slideOutVertically(tween(180)) + fadeOut(tween(180)))
+                            },
+                            label = "tabContent"
+                        ) { tab ->
+                            AndroidNewTab(blockedTotal = vm.blockedTotal, version = vm.trackerBlocker.version, onChip = { q -> vm.onAddressChange(q); vm.navigate(q) }, onDemo = vm::navigate)
                         }
+                    } else {
+                        // Real WebView — 100% fungsional FR-1,2,4,5
+                        val webViewClient = remember(activeTab.id) {
+                            NettraWebViewClient(
+                                trackerBlocker = vm.trackerBlocker,
+                                onTrackerBlocked = { vm.onTrackerBlocked() },
+                                onHttpsUpgrade = { https -> vm.onAddressChange(https) }
+                            )
+                        }
+                        AndroidView(
+                            factory = { ctx ->
+                                WebView(ctx).apply {
+                                    settings.javaScriptEnabled = true
+                                    settings.domStorageEnabled = true
+                                    settings.allowFileAccess = false
+                                    settings.allowContentAccess = false
+                                    settings.allowFileAccessFromFileURLs = false
+                                    settings.allowUniversalAccessFromFileURLs = false
+                                    webViewClient = webViewClient
+                                }
+                            },
+                            update = { wv ->
+                                wv.webViewClient = webViewClient
+                                if (wv.url != activeTab.url && activeTab.url.isNotEmpty()) {
+                                    wv.loadUrl(activeTab.url)
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
             }
