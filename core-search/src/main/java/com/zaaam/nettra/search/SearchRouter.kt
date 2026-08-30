@@ -20,11 +20,14 @@ object SearchRouter {
         val s = input.trim()
         if (s.isEmpty()) return false
         if (s.contains(' ')) return false
-        // scheme present
+        // scheme present — validate host and port range 1..65535
         if (s.startsWith("http://", ignoreCase = true) || s.startsWith("https://", ignoreCase = true)) {
             return try {
                 val u = java.net.URL(s)
-                u.host.isNotEmpty()
+                if (u.host.isEmpty()) return false
+                val p = u.port
+                if (p != -1 && (p < 1 || p > 65535)) return false
+                true
             } catch (_: Exception) { false }
         }
         // localhost with optional port 1-65535 and optional path

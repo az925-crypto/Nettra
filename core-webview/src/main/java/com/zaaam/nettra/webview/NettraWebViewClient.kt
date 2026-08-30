@@ -34,9 +34,9 @@ class NettraWebViewClient(
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val url = request?.url?.toString() ?: return false
-        // HTTPS-First enforce: upgrade http to https and block cleartext
-        if (url.startsWith("http://")) {
-            val https = url.replaceFirst("http://", "https://")
+        // HTTPS-First enforce: upgrade http to https and block cleartext (case-insensitive)
+        if (url.startsWith("http://", ignoreCase = true)) {
+            val https = url.replaceFirst("http://", "https://", ignoreCase = true)
             if (https != url) {
                 onHttpsUpgrade(https)
                 view?.loadUrl(https)

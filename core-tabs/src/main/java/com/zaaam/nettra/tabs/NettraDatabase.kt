@@ -27,6 +27,7 @@ interface TabDao {
     @Query("SELECT * FROM tabs ORDER BY createdAt DESC")
     suspend fun getAll(): List<TabEntity>
     @Insert suspend fun insert(t: TabEntity)
+    @Query("DELETE FROM tabs WHERE id = :id") suspend fun deleteById(id: Long)
     @Query("DELETE FROM tabs") suspend fun clearAll()
 }
 

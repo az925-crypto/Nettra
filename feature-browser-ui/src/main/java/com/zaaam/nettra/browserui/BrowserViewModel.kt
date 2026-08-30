@@ -31,6 +31,26 @@ class BrowserViewModel(
     private val tabDao: TabDao? = null
 ) : ViewModel() {
 
+    init {
+        // Load persisted tabs if DB available — FR-3 persist
+        if (tabDao != null) {
+            viewModelScope.launch {
+                try {
+                    val persisted = tabDao.getAll()
+                    if (persisted.isNotEmpty()) {
+                        val mapped = persisted.reversed().map { e ->
+                            TabState(id = e.id, title = e.title, url = e.url, isPrivate = e.isPrivate)
+                        }
+                        tabs = mapped
+                        activeId = mapped.first().id
+                        nextId = (mapped.maxOfOrNull { it.id } ?: 0) + 1
+                        addressInput = activeTab.let { if (it.url.startsWith("https://duckduckgo.com")) it.query else it.url }
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+    }
+
     // Blocklist — bundled snapshot v2026.08.21 (fallback hardcoded kalau assets belum load)
     val trackerBlocker: TrackerBlocker = TrackerBlocker(
         BlocklistSnapshot(
@@ -82,6 +102,12 @@ class BrowserViewModel(
         tabs = tabs + t
         activeId = t.id
         addressInput = ""
+        // Persist if DB available
+        tabDao?.let { dao ->
+            viewModelScope.launch {
+                try { dao.insert(TabEntity(id = t.id, url = t.url, title = t.title, isPrivate = t.isPrivate)) } catch (_: Exception) { }
+            }
+        }
     }
 
     fun closeTab(id: Long) {
@@ -91,6 +117,11 @@ class BrowserViewModel(
         if (wasActive) {
             activeId = tabs.last().id
             addressInput = activeTab.let { if (it.url.startsWith("https://duckduckgo.com")) it.query else it.url }
+        }
+        tabDao?.let { dao ->
+            viewModelScope.launch {
+                try { dao.deleteById(id) } catch (_: Exception) { }
+            }
         }
     }
 
