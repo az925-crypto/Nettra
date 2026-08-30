@@ -19,8 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -37,145 +35,192 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.text.input.ImeAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
-    // Derived state to avoid recomposition on unrelated vm changes
     val activeTab by remember { derivedStateOf { vm.activeTab } }
     val tabCount by remember { derivedStateOf { vm.tabs.size } }
-
-    // Stable lambdas to avoid recomposition
-    val onSwitchTab: (Long) -> Unit = remember(vm) { { id -> vm.switchTab(id) } }
-    val onCloseTab: (Long) -> Unit = remember(vm) { { id -> vm.closeTab(id) } }
-    val onNewTab: () -> Unit = remember(vm) { { vm.newTab() } }
-    val onNewPrivateTab: () -> Unit = remember(vm) { { vm.newTab(private = true) } }
-    val onAddressChange: (String) -> Unit = remember(vm) { { v -> vm.onAddressChange(v) } }
-    val onSubmit: () -> Unit = remember(vm) { { vm.navigate(vm.addressInput) } }
-    val onPrivacyClick: () -> Unit = remember(vm) { { vm.togglePrivacy(true) } }
-    val onTabsClick: () -> Unit = remember(vm) { { vm.toggleTabSwitcher(true) } }
-    val onMenuClick: () -> Unit = remember(vm) { { vm.toggleMenu(true) } }
-    val onFireClick: () -> Unit = remember(vm) { { vm.requestFire() } }
+    val onSwitchTab = remember(vm) { { id: Long -> vm.switchTab(id) } }
+    val onCloseTab = remember(vm) { { id: Long -> vm.closeTab(id) } }
+    val onNewTab = remember(vm) { { vm.newTab() } }
+    val onSubmit = remember(vm) { { vm.navigate(vm.addressInput) } }
 
     NettraTheme {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(NettraBg)
+                .background(NettraColors.VoidInk)
         ) {
+            // Subtle grid + noise via overlay (hard brutalist, not blur)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color(0x0AFFFFFF))
+                        )
+                    )
+            )
             Column(modifier = Modifier.fillMaxSize()) {
-                // Status bar spacer
-                Spacer(modifier = Modifier.height(24.dp).fillMaxWidth().background(Color.Black))
-                // Address bar
-                AddressBar(
+                // Top wordmark
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.Black)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "N E T T R A",
+                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = NettraFontMono,
+                            letterSpacing = 2.4.sp,
+                            color = NettraColors.PaperBone
+                        )
+                    )
+                    Text(
+                        "DOSSIER • ${vm.trackerBlocker.version} • FORENSIK",
+                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = NettraFontMono,
+                            fontSize = 9.sp,
+                            color = NettraColors.Soot
+                        )
+                    )
+                }
+                // Redacted Bar — 4dp, PaperBone, redacted blocks
+                RedactedBar(
                     input = vm.addressInput,
-                    onInputChange = onAddressChange,
+                    onInputChange = vm::onAddressChange,
                     onSubmit = onSubmit,
                     activeTab = activeTab,
                     tabCount = tabCount,
-                    onPrivacyClick = onPrivacyClick,
-                    onTabsClick = onTabsClick,
-                    onMenuClick = onMenuClick
+                    onPrivacyClick = { vm.togglePrivacy(true) },
+                    onTabsClick = { vm.toggleTabSwitcher(true) },
+                    onMenuClick = { vm.toggleMenu(true) }
                 )
-                // Tab strip FR-1 with LazyRow + keys for performance
-                TabStrip(
+                // Dossier Stack — tab strip with overlap & hard shadow
+                DossierStack(
                     tabs = vm.tabs,
                     activeId = vm.activeId,
                     onSwitch = onSwitchTab,
                     onClose = onCloseTab,
                     onNewTab = onNewTab
                 )
-                // Main viewport
-                Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFF0E141E))) {
+                // Viewport — VoidInk with grid lines
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .background(NettraColors.VoidInk)
+                ) {
                     when (activeTab.type) {
-                        "newtab" -> NewTabContent(
+                        "newtab" -> BurnNewTab(
                             blockedTotal = vm.blockedTotal,
                             version = vm.trackerBlocker.version,
-                            onChip = remember(vm) { { q: String -> vm.onAddressChange(q); vm.navigate(q) } },
-                            onDemo = remember(vm) { { url: String -> vm.navigate(url) } },
-                            onSearch = remember(vm) { { q: String -> vm.navigate(q) } }
+                            onChip = { q -> vm.onAddressChange(q); vm.navigate(q) },
+                            onDemo = vm::navigate
                         )
-                        "results" -> ResultsContent(query = activeTab.query, onOpen = remember(vm) { { url: String -> vm.navigate(url) } })
-                        "site" -> SiteContent(tab = activeTab, onTrackerClick = onPrivacyClick)
-                        "http" -> HttpWarningContent(url = activeTab.url, onUpgrade = remember(vm) { { vm.upgradeToHttps() } }, onContinue = { /* keep http */ })
-                        else -> NewTabContent(vm.blockedTotal, vm.trackerBlocker.version, remember(vm) { { q: String -> vm.onAddressChange(q); vm.navigate(q) } }, remember(vm) { { url: String -> vm.navigate(url) } }) { q -> vm.navigate(q) }
+                        "results" -> BurnResults(query = activeTab.query, onOpen = vm::navigate)
+                        "site" -> BurnSite(tab = activeTab, onTrackerClick = { vm.togglePrivacy(true) })
+                        "http" -> BurnHttpWarning(url = activeTab.url, onUpgrade = vm::upgradeToHttps)
+                        else -> BurnNewTab(vm.blockedTotal, vm.trackerBlocker.version, { q -> vm.onAddressChange(q); vm.navigate(q) }, vm::navigate)
                     }
-                    // Optional real WebView overlay for actual loading (behind mock content for now, but functional)
-                    // Uncomment to load real URL:
-                    // if (vm.activeTab.type == "site" || vm.activeTab.type == "results") {
-                    //   AndroidView(factory = { ctx ->
-                    //     WebView(ctx).apply {
-                    //       webViewClient = NettraWebViewClient(vm.trackerBlocker, onTrackerBlocked = { vm.onTrackerBlocked() })
-                    //       settings.javaScriptEnabled = true
-                    //       settings.allowFileAccess = false
-                    //       settings.allowContentAccess = false
-                    //       settings.allowFileAccessFromFileURLs = false
-                    //       settings.allowUniversalAccessFromFileURLs = false
-                    //       settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                    //       settings.domStorageEnabled = true
-                    //       loadUrl(vm.activeTab.url)
-                    //     }
-                    //   }, modifier = Modifier.fillMaxSize())
-                    // }
                 }
-                // Bottom bar FR-6 Fire center
-                BottomBar(
+                // Bottom concrete bar with hard border
+                BurnBottomBar(
                     onBack = {},
                     onForward = {},
-                    onFire = onFireClick,
-                    onTabs = onTabsClick,
-                    onMenu = onMenuClick
+                    onFire = vm::requestFire,
+                    onTabs = { vm.toggleTabSwitcher(true) },
+                    onMenu = { vm.toggleMenu(true) }
                 )
             }
 
-            // Privacy Report sheet FR-7
             if (vm.showPrivacy) {
                 ModalBottomSheet(
                     onDismissRequest = { vm.togglePrivacy(false) },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    containerColor = NettraSurface,
-                    contentColor = NettraText
+                    containerColor = NettraColors.PaperBone,
+                    contentColor = NettraColors.VoidInk,
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 ) {
-                    PrivacyReportSheet(tab = activeTab, version = vm.trackerBlocker.version) { vm.togglePrivacy(false) }
+                    BurnPrivacySheet(tab = activeTab, version = vm.trackerBlocker.version) { vm.togglePrivacy(false) }
                 }
             }
-
-            // Fire dialog FR-6
             if (vm.showFireDialog) {
-                FireDialog(
-                    tabCount = tabCount,
-                    onDismiss = remember(vm) { { vm.dismissFire() } },
-                    onConfirm = remember(vm) { { vm.doFire() } }
+                AlertDialog(
+                    onDismissRequest = vm::dismissFire,
+                    containerColor = NettraColors.PaperBone,
+                    titleContentColor = NettraColors.VoidInk,
+                    textContentColor = NettraColors.Concrete,
+                    title = {
+                        Text(
+                            "Bakar Jejak?",
+                            style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(
+                                fontFamily = NettraFontInstrument, color = NettraColors.VoidInk
+                            )
+                        )
+                    },
+                    text = {
+                        Text(
+                            "Semua tab ($tabCount → 1), cookie & cache dimusnahkan. Bookmark tetap. Tindakan tidak bisa dibatalkan.",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = NettraFontSpace, color = NettraColors.Concrete
+                            )
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = vm::doFire) {
+                            Text(
+                                "◉ BAKAR",
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = NettraFontMono, color = NettraColors.BurnVermillion
+                                )
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = vm::dismissFire) {
+                            Text(
+                                "BATAL",
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = NettraFontMono, color = NettraColors.Soot
+                                )
+                            )
+                        }
+                    }
                 )
             }
-
-            // Tab switcher FR-1
             if (vm.showTabSwitcher) {
-                TabSwitcherSheet(
+                BurnTabSwitcher(
                     tabs = vm.tabs,
                     activeId = vm.activeId,
                     onSwitch = onSwitchTab,
                     onClose = onCloseTab,
-                    onNewTab = remember(vm) { { vm.newTab(); vm.toggleTabSwitcher(false) } },
-                    onPrivateTab = remember(vm) { { vm.newTab(private = true); vm.toggleTabSwitcher(false) } },
-                    onDismiss = remember(vm) { { vm.toggleTabSwitcher(false) } }
+                    onNewTab = { vm.newTab(); vm.toggleTabSwitcher(false) },
+                    onPrivate = { vm.newTab(private = true); vm.toggleTabSwitcher(false) },
+                    onDismiss = { vm.toggleTabSwitcher(false) }
                 )
             }
-
-            // Menu drawer simple
             if (vm.showMenu) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0x99050A14))
+                        .background(Color(0x990B0F12))
                         .clickable { vm.toggleMenu(false) },
                     contentAlignment = Alignment.CenterEnd
                 ) {
@@ -185,26 +230,45 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                             .fillMaxSize()
                             .padding(12.dp)
                             .clickable(enabled = false) {},
-                        colors = CardDefaults.cardColors(containerColor = NettraSurface),
-                        shape = RoundedCornerShape(16.dp)
+                        colors = CardDefaults.cardColors(containerColor = NettraColors.PaperBone),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
-                            Text("Nettra", fontWeight = FontWeight.ExtraBold, color = NettraText)
-                            Text("com.zaaam.nettra · v1", fontSize = 11.sp, color = NettraMuted)
-                            Spacer(Modifier.height(12.dp))
-                            MenuItem("Tab baru") { vm.newTab(); vm.toggleMenu(false) }
-                            MenuItem("Private Tab") { vm.newTab(private = true); vm.toggleMenu(false) }
-                            MenuItem("Bookmark (3)") {}
-                            MenuItem("History (Room)") {}
-                            MenuItem("Privacy Report") { vm.toggleMenu(false); vm.togglePrivacy(true) }
-                            MenuItem("HTTPS-First ON") {}
-                            MenuItem("🔥 Fire Button") { vm.toggleMenu(false); vm.requestFire() }
-                            Spacer(Modifier.height(8.dp))
                             Text(
-                                "Atribusi: Tracker data © DuckDuckGo CC BY-NC-SA 4.0 · v2026.08.21 bundled.",
-                                fontSize = 10.sp, color = NettraMuted, lineHeight = 14.sp
+                                "NETTRA",
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = NettraFontMono, letterSpacing = 2.sp, color = NettraColors.VoidInk
+                                )
                             )
-                            TextButton(onClick = { vm.toggleMenu(false) }) { Text("Tutup", color = NettraMuted) }
+                            Text("DOSSIER • com.zaaam.nettra", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, fontSize = 9.sp, color = NettraColors.Soot))
+                            Spacer(Modifier.height(12.dp))
+                            listOf("Tab baru", "Private Tab", "Bookmark (3)", "History", "Laporan Forensik", "HTTPS-First ON", "◉ BAKAR JEJAK").forEach { label ->
+                                Text(
+                                    label,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .clickable {
+                                            when (label) {
+                                                "Tab baru" -> { vm.newTab(); vm.toggleMenu(false) }
+                                                "Private Tab" -> { vm.newTab(private = true); vm.toggleMenu(false) }
+                                                "Laporan Forensik" -> { vm.toggleMenu(false); vm.togglePrivacy(true) }
+                                                "◉ BAKAR JEJAK" -> { vm.toggleMenu(false); vm.requestFire() }
+                                            }
+                                        }
+                                        .padding(10.dp),
+                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = NettraFontSpace, color = NettraColors.VoidInk, fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+                            Text(
+                                "Tracker: DuckDuckGo Tracker Radar • CC BY-NC-SA 4.0 • v2026.08.21",
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = NettraFontMono, fontSize = 8.sp, color = NettraColors.Soot
+                                ),
+                                modifier = Modifier.padding(top = 12.dp)
+                            )
                         }
                     }
                 }
@@ -214,7 +278,7 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
 }
 
 @Composable
-private fun AddressBar(
+private fun RedactedBar(
     input: String,
     onInputChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -226,185 +290,315 @@ private fun AddressBar(
 ) {
     Row(
         modifier = Modifier
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(999.dp))
-            .background(NettraSurface2)
-            .border(1.dp, NettraBorder, RoundedCornerShape(999.dp))
-            .padding(6.dp),
+            .clip(RoundedCornerShape(4.dp))
+            .background(NettraColors.PaperBone)
+            .border(1.5.dp, NettraColors.BorderStrong, RoundedCornerShape(4.dp))
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Privacy chip A/B/C
-        val chipColor = when (activeTab.grade) { "A" -> NettraGreen; "B" -> NettraYellow; else -> NettraRed }
-        val chipBg = when (activeTab.grade) { "A" -> Color(0x1F1DD75B); "B" -> Color(0x1FFFB020); else -> Color(0x1FFF3B3B) }
+        // Privacy stamp
+        val gradeColor = when (activeTab.grade) { "A" -> NettraColors.BurnVermillion; "B" -> Color(0xFFFFB020); else -> Color(0xFF8C877F) }
         Box(
             modifier = Modifier
                 .size(28.dp)
-                .clip(CircleShape)
-                .background(chipBg)
-                .border(1.dp, chipColor.copy(alpha = 0.3f), CircleShape)
+                .clip(RoundedCornerShape(4.dp))
+                .background(if (activeTab.grade == "A") NettraColors.BurnVermillion else Color.Black)
                 .clickable { onPrivacyClick() },
             contentAlignment = Alignment.Center
         ) {
-            Text(if (activeTab.grade == "A") "✓" else "!", color = chipColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            if (activeTab.blocked > 0) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(NettraPurple)
-                        .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("${activeTab.blocked}", fontSize = 7.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            Text(
+                when (activeTab.grade) { "A" -> "✓"; "B" -> "!"; else -> "✕" },
+                color = NettraColors.PaperBone, fontSize = 12.sp, fontWeight = FontWeight.Bold
+            )
+        }
+        // Redacted blocks for trackers
+        if (activeTab.blocked > 0) {
+            Row(modifier = Modifier.padding(start = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(minOf(activeTab.blocked, 3)) {
+                    Box(modifier = Modifier.size(width = 28.dp, height = 12.dp).clip(RoundedCornerShape(2.dp)).background(Color.Black))
+                }
+                if (activeTab.blocked > 3) {
+                    Text(
+                        "+${activeTab.blocked - 3}",
+                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = NettraFontMono, fontSize = 9.sp, color = Color.Black
+                        ),
+                        modifier = Modifier.padding(start = 2.dp)
+                    )
                 }
             }
         }
-        androidx.compose.material3.OutlinedTextField(
+        OutlinedTextField(
             value = input,
             onValueChange = onInputChange,
-            placeholder = { Text("Cari atau masukkan alamat", color = NettraDim, fontSize = 14.sp) },
+            placeholder = {
+                Text(
+                    "Cari atau masukkan alamat —",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = NettraFontSpace, color = NettraColors.Soot
+                    )
+                )
+            },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onSubmit() }),
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+            colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
                 focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = NettraText, unfocusedTextColor = NettraText, cursorColor = NettraText
+                focusedTextColor = NettraColors.VoidInk, unfocusedTextColor = NettraColors.VoidInk,
+                cursorColor = NettraColors.BurnVermillion
+            ),
+            textStyle = androidx.compose.material3.MaterialTheme.typography.bodySmall.copy(
+                fontFamily = NettraFontMono, color = NettraColors.VoidInk, fontWeight = FontWeight.Bold
             )
         )
+        // Tab count mono 02
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .background(NettraSurface3)
-                .border(1.dp, NettraBorder, RoundedCornerShape(999.dp))
+                .clip(RoundedCornerShape(4.dp))
+                .background(NettraColors.VoidInk)
                 .clickable { onTabsClick() }
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center
-        ) { Text("$tabCount", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NettraMuted) }
-        Text("  ☰", modifier = Modifier.clickable { onMenuClick() }.padding(6.dp), color = NettraMuted, fontSize = 14.sp)
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+        ) {
+            Text(
+                String.format("%02d", tabCount),
+                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = NettraFontMono, color = NettraColors.PaperBone, fontSize = 11.sp
+                )
+            )
+        }
+        Text(
+            "☰",
+            modifier = Modifier.clickable { onMenuClick() }.padding(start = 8.dp),
+            color = NettraColors.VoidInk, fontSize = 14.sp, fontWeight = FontWeight.Bold
+        )
     }
 }
 
 @Composable
-private fun TabStrip(tabs: List<TabState>, activeId: Long, onSwitch: (Long) -> Unit, onClose: (Long) -> Unit, onNewTab: () -> Unit) {
+private fun DossierStack(tabs: List<TabState>, activeId: Long, onSwitch: (Long) -> Unit, onClose: (Long) -> Unit, onNewTab: () -> Unit) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
+            .background(NettraColors.VoidInk)
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy((-8).dp)
     ) {
         items(tabs, key = { it.id }) { t ->
             val isActive = t.id == activeId
-            Row(
+            Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(if (isActive) NettraSurface3 else Color(0x0FFFFFFF))
-                    .border(1.dp, if (isActive) NettraBorder else Color.Transparent, RoundedCornerShape(999.dp))
+                    .shadow(elevation = if (isActive) 4.dp else 0.dp, shape = RoundedCornerShape(4.dp), clip = false)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(if (isActive) NettraColors.PaperBone else NettraColors.Concrete)
+                    .border(1.5.dp, if (isActive) NettraColors.BurnVermillion else NettraColors.Border, RoundedCornerShape(4.dp))
                     .clickable { onSwitch(t.id) }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                if (t.isPrivate) Text("🕶️ ", fontSize = 10.sp)
-                Text(
-                    t.title.take(18),
-                    fontSize = 12.sp,
-                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
-                    color = if (isActive) NettraText else NettraMuted,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.width(90.dp)
-                )
-                Text(" ✕", modifier = Modifier.clickable { onClose(t.id) }.padding(start = 6.dp), color = NettraMuted, fontSize = 10.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (t.isPrivate) Text("◉ ", color = NettraColors.BurnVermillion, fontSize = 8.sp)
+                    Text(
+                        t.title.take(14),
+                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = if (isActive) NettraFontMono else NettraFontSpace,
+                            color = if (isActive) NettraColors.VoidInk else NettraColors.Soot,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        "  ✕",
+                        modifier = Modifier.clickable { onClose(t.id) }.padding(start = 4.dp),
+                        color = if (isActive) NettraColors.VoidInk else NettraColors.Soot,
+                        fontSize = 10.sp
+                    )
+                }
+                if (isActive) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .background(NettraColors.BurnVermillion)
+                    )
+                }
             }
         }
         item(key = "new_tab_btn") {
             Box(
                 modifier = Modifier
+                    .padding(start = 12.dp)
                     .size(32.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, NettraBorder, CircleShape)
+                    .clip(RoundedCornerShape(4.dp))
+                    .border(1.5.dp, NettraColors.Border, RoundedCornerShape(4.dp))
+                    .background(Color.Transparent)
                     .clickable { onNewTab() },
                 contentAlignment = Alignment.Center
-            ) { Text("+", color = NettraMuted) }
+            ) { Text("+", color = NettraColors.Soot, fontWeight = FontWeight.Bold) }
         }
     }
 }
 
 @Composable
-private fun NewTabContent(blockedTotal: Int, version: String, onChip: (String) -> Unit, onDemo: (String) -> Unit, onSearch: (String) -> Unit) {
-    val fireBrush = remember { Brush.linearGradient(listOf(NettraFire, Color(0xFFFF8A1A), NettraYellow)) }
+private fun BurnNewTab(blockedTotal: Int, version: String, onChip: (String) -> Unit, onDemo: (String) -> Unit) {
+    val fireBrush = remember { androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(NettraColors.BurnVermillion, Color(0xFF8C877F))) }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(fireBrush),
-                contentAlignment = Alignment.Center
-            ) { Text("🔥", fontSize = 20.sp) }
-            Column(modifier = Modifier.padding(start = 12.dp)) {
-                Text("Nettra — private", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = NettraText)
-                Text("Cari tanpa profiling. Tracker diblokir otomatis.", fontSize = 12.sp, color = NettraMuted)
-            }
-        }
-        Card(colors = CardDefaults.cardColors(containerColor = NettraSurface), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().border(1.dp, NettraBorder, RoundedCornerShape(18.dp))) {
+        // Headline Instrument Serif 42sp — the unforgettable
+        Text(
+            "Tak seorang pun\nmengikutimu.",
+            style = androidx.compose.material3.MaterialTheme.typography.displayLarge.copy(
+                fontFamily = NettraFontInstrument, color = NettraColors.PaperBone
+            )
+        )
+        Text(
+            "Pencarian DuckDuckGo • HTTPS-First aktif • $version",
+            style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 10.sp
+            )
+        )
+        // Search dossier field — Concrete, 4dp, redacted cursor
+        Card(
+            colors = CardDefaults.cardColors(containerColor = NettraColors.Concrete),
+            shape = RoundedCornerShape(4.dp),
+            modifier = Modifier.fillMaxWidth().border(1.5.dp, NettraColors.Border, RoundedCornerShape(4.dp))
+        ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(999.dp)).background(NettraSurface2).border(1.dp, NettraBorder, RoundedCornerShape(999.dp)).padding(10.dp)) {
-                    Text("⌕ ", color = NettraMuted)
-                    Text("Cari atau masukkan alamat", color = NettraDim, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    Text("DuckDuckGo", color = Color(0xFFDE5833), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.background(Color(0x1FDE5833), RoundedCornerShape(999.dp)).padding(horizontal = 7.dp, vertical = 4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(NettraColors.VoidInk)
+                        .border(1.dp, NettraColors.Border, RoundedCornerShape(4.dp))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("⌕  ", color = NettraColors.Soot, fontSize = 14.sp)
+                    Text(
+                        "Cari atau masukkan alamat —",
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = NettraFontSpace, color = NettraColors.Soot
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Box(modifier = Modifier.size(width = 12.dp, height = 16.dp).background(NettraColors.BurnVermillion))
                 }
-                Text("CEPAT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NettraMuted, modifier = Modifier.padding(top = 10.dp))
+                Text(
+                    "CEPAT",
+                    style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 9.sp
+                    ),
+                    modifier = Modifier.padding(top = 10.dp)
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
                     listOf("berita hari ini", "resep nasi goreng", "jadwal sholat").forEach { q ->
-                        Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(NettraSurface2).border(1.dp, NettraBorder, RoundedCornerShape(999.dp)).clickable { onChip(q) }.padding(horizontal = 10.dp, vertical = 6.dp)) {
-                            Text(q, fontSize = 11.sp, color = NettraMuted)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(NettraColors.ConcreteElevated)
+                                .border(1.dp, NettraColors.Border, RoundedCornerShape(4.dp))
+                                .clickable { onChip(q) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                q,
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 10.sp
+                                )
+                            )
                         }
                     }
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = NettraSurface), shape = RoundedCornerShape(14.dp)) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("PROTEKSI AKTIF", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NettraDim)
-                    Text("$blockedTotal", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NettraText)
-                    Text("tracker diblokir (sesi)", fontSize = 11.sp, color = NettraMuted)
+        // Two evidence cards — asymmetric
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Card(
+                modifier = Modifier.weight(1.2f),
+                colors = CardDefaults.cardColors(containerColor = NettraColors.PaperBone),
+                shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        "DIMUSNAHKAN",
+                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 9.sp
+                        )
+                    )
+                    Text(
+                        String.format("%02d", blockedTotal),
+                        style = androidx.compose.material3.MaterialTheme.typography.displayMedium.copy(
+                            fontFamily = NettraFontInstrument, color = NettraColors.VoidInk, fontSize = 36.sp
+                        )
+                    )
+                    Text(
+                        "pelacak sesi ini",
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = NettraFontSpace, color = NettraColors.Concrete
+                        )
+                    )
+                    Box(modifier = Modifier.padding(top = 8.dp).height(2.dp).fillMaxWidth().background(fireBrush))
                 }
             }
-            Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = NettraSurface), shape = RoundedCornerShape(14.dp)) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("BLOCKLIST DDG", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NettraDim)
-                    Text(version, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NettraText)
-                    Text("CC BY-NC-SA 4.0", fontSize = 11.sp, color = NettraMuted)
+            Card(
+                modifier = Modifier.weight(0.8f),
+                colors = CardDefaults.cardColors(containerColor = NettraColors.ConcreteElevated),
+                shape = RoundedCornerShape(4.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("DOSSIER", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 9.sp))
+                    Text(version, style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(fontFamily = NettraFontMono, color = NettraColors.PaperBone, fontSize = 16.sp))
+                    Text("CC BY-NC-SA 4.0", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 9.sp))
                 }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Buka situs demo (news)", modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(NettraSurface2).border(1.dp, NettraBorder, RoundedCornerShape(999.dp)).clickable { onDemo("https://contoh-berita.id/artikel/privasi") }.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 12.sp, color = NettraText)
-            Text("Shop (9 tracker)", modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(NettraSurface2).border(1.dp, NettraBorder, RoundedCornerShape(999.dp)).clickable { onDemo("https://toko-contoh.com/promo") }.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 12.sp, color = NettraText)
+            Text(
+                "BUKA DOSSIER NEWS",
+                modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(NettraColors.PaperBone).clickable { onDemo("https://contoh-berita.id/artikel/privasi") }.padding(horizontal = 14.dp, vertical = 10.dp),
+                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.VoidInk)
+            )
+            Text(
+                "SHOP 09 TRACKER",
+                modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color.Black).border(1.dp, NettraColors.BurnVermillion, RoundedCornerShape(4.dp)).clickable { onDemo("https://toko-contoh.com/promo") }.padding(horizontal = 14.dp, vertical = 10.dp),
+                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.BurnVermillion)
+            )
         }
     }
 }
 
 @Composable
-private fun ResultsContent(query: String, onOpen: (String) -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        Text("DuckDuckGo → https://duckduckgo.com/?q=$query", fontSize = 11.sp, color = NettraMuted)
-        Text("Hasil untuk \"$query\" — tanpa profiling (FR-2)", fontSize = 12.sp, color = NettraMuted, modifier = Modifier.padding(vertical = 8.dp))
-        listOf("contoh-berita.id" to "Berita hari ini — ringkasan tanpa tracker", "toko-contoh.com" to "Toko online — 9 tracker dicegat").forEach { (host, title) ->
-            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onOpen("https://$host") }, colors = CardDefaults.cardColors(containerColor = NettraSurface)) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("https://$host · 🔒", fontSize = 11.sp, color = NettraGreen)
-                    Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF7CC8FF))
+private fun BurnResults(query: String, onOpen: (String) -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Text(
+            "DUCKDUCKGO — https://duckduckgo.com/?q=$query",
+            style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 9.sp)
+        )
+        Text(
+            "Hasil untuk “$query” — tanpa profiling",
+            style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(fontFamily = NettraFontInstrument, color = NettraColors.PaperBone, fontSize = 18.sp),
+            modifier = Modifier.padding(vertical = 12.dp)
+        )
+        listOf("contoh-berita.id" to "Berita hari ini — ringkasan tanpa tracker", "toko-contoh.com" to "Toko online — 09 tracker dimusnahkan").forEach { (host, title) ->
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onOpen("https://$host") },
+                colors = CardDefaults.cardColors(containerColor = NettraColors.ConcreteElevated),
+                shape = RoundedCornerShape(4.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("https://$host — BERSIH", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.BurnVermillion, fontSize = 9.sp))
+                    Text(title, style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(fontFamily = NettraFontInstrument, color = NettraColors.PaperBone, fontSize = 16.sp))
                 }
             }
         }
@@ -412,128 +606,150 @@ private fun ResultsContent(query: String, onOpen: (String) -> Unit) {
 }
 
 @Composable
-private fun SiteContent(tab: TabState, onTrackerClick: () -> Unit) {
+private fun BurnSite(tab: TabState, onTrackerClick: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Row(modifier = Modifier.fillMaxWidth().background(NettraSurface).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(tab.title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NettraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Text("${tab.blocked} diblokir", fontSize = 11.sp, color = NettraPurple, modifier = Modifier.clickable { onTrackerClick() })
+        Row(
+            modifier = Modifier.fillMaxWidth().background(NettraColors.PaperBone).padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                tab.title,
+                style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(fontFamily = NettraFontInstrument, color = NettraColors.VoidInk, fontSize = 16.sp),
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+            )
+            Text(
+                String.format("%02d DIBLOKIR", tab.blocked),
+                modifier = Modifier.clickable { onTrackerClick() }.background(NettraColors.BurnVermillion, RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp),
+                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.PaperBone, fontSize = 9.sp)
+            )
         }
         if (tab.blocked > 0) {
-            Box(modifier = Modifier.fillMaxWidth().background(Color(0x1F8B5CF6)).padding(10.dp)) {
-                Text("🛡️ ${tab.blocked} tracker diblokir — duckduckgo/tracker-blocklists", fontSize = 12.sp, color = Color(0xFFC4B5FD))
+            Box(modifier = Modifier.fillMaxWidth().background(Color.Black).padding(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    repeat(minOf(tab.blocked, 4)) { Box(modifier = Modifier.size(width = 32.dp, height = 10.dp).background(Color.White)) }
+                    Text("— ${tab.blocked} ███ DIMUSNAHKAN", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = Color.White, fontSize = 9.sp))
+                }
             }
         }
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(if (tab.url.contains("shop")) "Promo besar — 9 tracker mengintai" else "Kenapa privasi browsing itu penting", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = NettraText)
-            Text("🔒 HTTPS-First aktif · 🛡️ ${tab.blocked} diblokir", fontSize = 11.sp, color = NettraMuted, modifier = Modifier.padding(vertical = 6.dp))
-            Text("Nettra memblokir di level WebViewClient.shouldInterceptRequest — request tidak pernah keluar, bukan cuma disembunyikan. First-party tetap jalan.", fontSize = 14.sp, color = Color(0xFFC9D4E3), lineHeight = 20.sp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                if (tab.url.contains("shop")) "Promo besar — sembilan pelacak mengintai" else "Kenapa privasi itu pembakaran",
+                style = androidx.compose.material3.MaterialTheme.typography.displayMedium.copy(fontFamily = NettraFontInstrument, color = NettraColors.PaperBone)
+            )
+            Text(
+                "14:02:11 • HTTPS-First aktif • ${tab.blocked} dimusnahkan",
+                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 9.sp),
+                modifier = Modifier.padding(vertical = 6.dp)
+            )
+            Text(
+                "Nettra memusnahkan di level shouldInterceptRequest — request tidak pernah keluar, bukan disembunyikan. First-party tetap utuh.",
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall.copy(fontFamily = NettraFontSpace, color = NettraColors.PaperBone),
+                lineHeight = 20.sp
+            )
         }
     }
 }
 
 @Composable
-private fun HttpWarningContent(url: String, onUpgrade: () -> Unit, onContinue: () -> Unit) {
+private fun BurnHttpWarning(url: String, onUpgrade: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0x1FFFB020)), shape = RoundedCornerShape(14.dp)) {
-            Text("⚠️ Koneksi tidak aman — HTTPS-First\n$url akan di-upgrade ke HTTPS otomatis (FR-5).", modifier = Modifier.padding(12.dp), fontSize = 13.sp, color = NettraText)
+        Card(colors = CardDefaults.cardColors(containerColor = NettraColors.PaperBone), shape = RoundedCornerShape(4.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("KONEKSI TIDAK AMAN", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = Color.Black, fontSize = 9.sp))
+                Text("HTTP terdeteksi — akan di-upgrade ke HTTPS", style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(fontFamily = NettraFontInstrument, color = Color.Black))
+                Text(url, style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Concrete, fontSize = 10.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("🔒 Buka HTTPS", modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(NettraText).clickable { onUpgrade() }.padding(horizontal = 14.dp, vertical = 10.dp), color = NettraBg, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            Text("Lanjut HTTP", modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(NettraSurface2).border(1.dp, NettraBorder, RoundedCornerShape(999.dp)).clickable { onContinue() }.padding(horizontal = 14.dp, vertical = 10.dp), color = NettraText, fontSize = 13.sp)
+            Text(
+                "◉ UPGRADE KE HTTPS",
+                modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(NettraColors.BurnVermillion).clickable { onUpgrade() }.padding(horizontal = 16.dp, vertical = 12.dp),
+                style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.PaperBone)
+            )
         }
     }
 }
 
 @Composable
-private fun BottomBar(onBack: () -> Unit, onForward: () -> Unit, onFire: () -> Unit, onTabs: () -> Unit, onMenu: () -> Unit) {
-    val fireBrush = remember { Brush.verticalGradient(listOf(Color(0xFFFF6A1A), NettraFire)) }
+private fun BurnBottomBar(onBack: () -> Unit, onForward: () -> Unit, onFire: () -> Unit, onTabs: () -> Unit, onMenu: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(64.dp).background(Color(0xE80A0E14)).padding(horizontal = 10.dp),
+        modifier = Modifier.fillMaxWidth().height(64.dp).background(NettraColors.Concrete).border(1.5.dp, NettraColors.Border, RoundedCornerShape(0.dp)).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row { Text("←", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).clickable { onBack() }.padding(12.dp), color = NettraMuted); Text("→", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).clickable { onForward() }.padding(12.dp), color = NettraMuted) }
+        Row { Text("←", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(4.dp)).clickable { onBack() }.padding(12.dp), color = NettraColors.Soot, fontWeight = FontWeight.Bold); Text("→", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(4.dp)).clickable { onForward() }.padding(12.dp), color = NettraColors.Soot) }
+        // Burn Stamp — the unforgettable 56dp
         Box(
-            modifier = Modifier.size(56.dp).clip(CircleShape).background(fireBrush).border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape).clickable { onFire() },
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(NettraColors.BurnVermillion)
+                .border(3.dp, NettraColors.PaperBone, CircleShape)
+                .border(1.dp, Color.Black, CircleShape)
+                .clickable { onFire() },
             contentAlignment = Alignment.Center
-        ) { Text("🔥", fontSize = 22.sp) }
-        Row { Text("▦", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).clickable { onTabs() }.padding(12.dp), color = NettraMuted); Text("☰", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).clickable { onMenu() }.padding(12.dp), color = NettraMuted) }
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("◉", color = NettraColors.PaperBone, fontSize = 10.sp, lineHeight = 10.sp)
+                Text("BURN", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.PaperBone, fontSize = 8.sp, letterSpacing = 1.sp))
+            }
+        }
+        Row { Text("▦", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(4.dp)).clickable { onTabs() }.padding(12.dp), color = NettraColors.Soot); Text("☰", modifier = Modifier.size(42.dp).clip(RoundedCornerShape(4.dp)).clickable { onMenu() }.padding(12.dp), color = NettraColors.Soot) }
     }
 }
 
 @Composable
-private fun MenuItem(label: String, onClick: () -> Unit = {}) {
-    Text(label, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onClick() }.padding(10.dp), color = NettraText, fontSize = 13.sp)
-}
-
-@Composable
-private fun PrivacyReportSheet(tab: TabState, version: String, onDismiss: () -> Unit) {
+private fun BurnPrivacySheet(tab: TabState, version: String, onDismiss: () -> Unit) {
     Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-        Text("Privacy Report", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = NettraText)
+        Text("LAPORAN FORENSIK", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 9.sp))
+        Text("Bukti Pelacakan", style = androidx.compose.material3.MaterialTheme.typography.displayMedium.copy(fontFamily = NettraFontInstrument, color = NettraColors.VoidInk, fontSize = 28.sp))
         Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(NettraSurface2).border(1.dp, NettraBorder, RoundedCornerShape(14.dp)).padding(12.dp)) {
-            Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(when (tab.grade) { "A" -> Color(0x1F1DD75B); "B" -> Color(0x1FFFB020); else -> Color(0x1FFF3B3B) }).border(1.dp, when (tab.grade) { "A" -> NettraGreen; "B" -> NettraYellow; else -> NettraRed }, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                Text(tab.grade, fontWeight = FontWeight.ExtraBold, color = when (tab.grade) { "A" -> NettraGreen; "B" -> NettraYellow; else -> NettraRed })
-            }
-            Column(modifier = Modifier.padding(start = 12.dp)) {
-                Text("Privacy Grade ${tab.grade}", fontWeight = FontWeight.Bold, color = NettraText)
-                Text("${if (tab.secure) "🔒 HTTPS aktif" else "⚠️ HTTP"} · ${tab.blocked} tracker diblokir", fontSize = 12.sp, color = NettraMuted)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).background(NettraColors.VoidInk).padding(14.dp)) {
+            Text(
+                String.format("%02d", tab.blocked),
+                style = androidx.compose.material3.MaterialTheme.typography.displayLarge.copy(fontFamily = NettraFontInstrument, color = NettraColors.BurnVermillion, fontSize = 48.sp),
+                modifier = Modifier.padding(end = 12.dp)
+            )
+            Column {
+                Text("PELACAK DIMUSNAHKAN", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.PaperBone, fontSize = 9.sp))
+                Text(if (tab.secure) "HTTPS AKTIF • $version" else "HTTP TIDAK AMAN", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 9.sp))
             }
         }
         Spacer(Modifier.height(10.dp))
-        Text("Situs: ${tab.url.ifEmpty { "Tab baru" }}", fontSize = 11.sp, color = NettraMuted)
-        Text("Blocklist: $version (bundled)", fontSize = 11.sp, color = NettraMuted)
-        Text("Angka = request yang benar-benar diblokir FR-4, bukan statis.", fontSize = 10.sp, color = NettraDim, modifier = Modifier.padding(top = 8.dp))
-        TextButton(onClick = onDismiss) { Text("Tutup", color = NettraText) }
+        Text("Situs: ${tab.url.ifEmpty { "—" }}", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Concrete, fontSize = 10.sp))
+        Text("Angka dari shouldInterceptRequest FR-4, bukan statis.", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot, fontSize = 9.sp), modifier = Modifier.padding(top = 4.dp))
+        TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 8.dp)) { Text("TUTUP", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.VoidInk)) }
     }
-}
-
-@Composable
-private fun FireDialog(tabCount: Int, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Hapus semua sesi?") },
-        text = {
-            Column {
-                Text("Semua tab ($tabCount → 1), cookie & cache dihapus total (FR-6). Bookmark aman.", fontSize = 13.sp, color = NettraMuted)
-            }
-        },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("🔥 Fire", color = NettraFire, fontWeight = FontWeight.Bold) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Batal", color = NettraMuted) } },
-        containerColor = NettraSurface, titleContentColor = NettraText, textContentColor = NettraMuted
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TabSwitcherSheet(tabs: List<TabState>, activeId: Long, onSwitch: (Long) -> Unit, onClose: (Long) -> Unit, onNewTab: () -> Unit, onPrivateTab: () -> Unit, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = NettraSurface, contentColor = NettraText) {
+private fun BurnTabSwitcher(tabs: List<TabState>, activeId: Long, onSwitch: (Long) -> Unit, onClose: (Long) -> Unit, onNewTab: () -> Unit, onPrivate: () -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = NettraColors.PaperBone, contentColor = NettraColors.VoidInk, shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Tab — ${tabs.size}", fontWeight = FontWeight.ExtraBold, color = NettraText)
-                Text("Tutup", modifier = Modifier.clickable { onDismiss() }.padding(8.dp), color = NettraMuted, fontSize = 13.sp)
+                Text("DOSSIER — ${String.format("%02d", tabs.size)}", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.VoidInk))
+                Text("TUTUP", modifier = Modifier.clickable { onDismiss() }.padding(8.dp), style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot))
             }
             tabs.forEach { t ->
-                androidx.compose.runtime.key(t.id) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onSwitch(t.id) },
-                        colors = CardDefaults.cardColors(containerColor = if (t.id == activeId) NettraSurface3 else NettraSurface2),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("${if (t.isPrivate) "🕶️ " else ""}${t.title}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NettraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("${t.blocked} blocked · ${t.grade} ${if (t.secure) "🔒" else "⚠️"}", fontSize = 11.sp, color = NettraMuted)
-                            }
-                            Text("✕", modifier = Modifier.clickable { onClose(t.id) }.padding(8.dp), color = NettraMuted)
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onSwitch(t.id) },
+                    colors = CardDefaults.cardColors(containerColor = if (t.id == activeId) NettraColors.VoidInk else Color.White),
+                    shape = RoundedCornerShape(4.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (t.id == activeId) 4.dp else 0.dp)
+                ) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("${if (t.isPrivate) "◉ " else ""}${t.title}", style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = if (t.id == activeId) NettraColors.PaperBone else NettraColors.VoidInk), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(String.format("%02d • %s %s", t.blocked, t.grade, if (t.secure) "HTTPS" else "HTTP"), style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, fontSize = 9.sp, color = NettraColors.Soot))
                         }
+                        Text("✕", modifier = Modifier.clickable { onClose(t.id) }.padding(8.dp), style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot))
                     }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                Text("+ Tab baru", modifier = Modifier.weight(1f).clip(RoundedCornerShape(999.dp)).background(NettraText).clickable { onNewTab() }.padding(12.dp), color = NettraBg, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Text("🕶️ Private", modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(NettraSurface2).border(1.dp, NettraBorder, RoundedCornerShape(999.dp)).clickable { onPrivateTab() }.padding(12.dp), color = NettraText, fontSize = 13.sp)
+                Text("◉ TAB BARU", modifier = Modifier.weight(1f).clip(RoundedCornerShape(4.dp)).background(NettraColors.VoidInk).clickable { onNewTab() }.padding(12.dp), style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.PaperBone))
+                Text("◉ PRIVATE", modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color.Black).border(1.dp, NettraColors.Soot, RoundedCornerShape(4.dp)).clickable { onPrivate() }.padding(12.dp), style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(fontFamily = NettraFontMono, color = NettraColors.Soot))
             }
-            Text("FR-1: isolasi per-tab, min 1 tab.", fontSize = 10.sp, color = NettraDim, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
