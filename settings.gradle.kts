@@ -12,11 +12,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
-    versionCatalogs {
-        create("libs") {
-            from(files("gradle/libs.versions.toml"))
-        }
-    }
+    // gradle/libs.versions.toml auto-discovered as 'libs' — jangan panggil from() lagi (Gradle 9: Multiple 'from' invocations)
 }
 
 rootProject.name = "nettra"
