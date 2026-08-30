@@ -291,14 +291,35 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
             }
             if (vm.showMenu) {
                 ModalBottomSheet(onDismissRequest = { vm.toggleMenu(false) }, containerColor = NettraColors.Surface, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("NETTRA", style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp, fontWeight = FontWeight.Bold))
-                        Text("com.zaaam.nettra • Privacy Browser", style = MaterialTheme.typography.labelSmall.copy(color = NettraColors.Muted))
-                        Spacer(Modifier.height(12.dp))
-                        MenuRow("Tab baru") { vm.newTab(); vm.toggleMenu(false) }
-                        MenuRow("Private Tab") { vm.newTab(private = true); vm.toggleMenu(false) }
-                        MenuRow("Laporan Forensik") { vm.toggleMenu(false); vm.togglePrivacy(true) }
-                        MenuRow("Bakar Sesi", ember = true) { vm.toggleMenu(false); vm.requestFire() }
+                    LazyColumn(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 12.dp)) {
+                                Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(NettraColors.Lime), contentAlignment = Alignment.Center) { Text("N", style = MaterialTheme.typography.titleLarge.copy(color = NettraColors.Bg, fontWeight = FontWeight.Bold)) }
+                                Spacer(Modifier.width(12.dp))
+                                Column { Text("NETTRA", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)); Text("com.zaaam.nettra • v1.0.0", style = MaterialTheme.typography.labelSmall.copy(color = NettraColors.Muted, fontSize = 10.sp)) }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
+                        item {
+                            Text("BROWSING", style = MaterialTheme.typography.labelSmall.copy(color = NettraColors.Muted, fontSize = 10.sp, letterSpacing = 1.sp), modifier = Modifier.padding(vertical = 8.dp))
+                            MenuRowAndroid(icon = Icons.Filled.Tab, title = "Tab baru", subtitle = "Buka tab kosong", onClick = { vm.newTab(); vm.toggleMenu(false) })
+                            Spacer(Modifier.height(8.dp))
+                            MenuRowAndroid(icon = Icons.Filled.Close, title = "Tab samaran", subtitle = "Private • tidak simpan history", onClick = { vm.newTab(private = true); vm.toggleMenu(false) })
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        item {
+                            Text("PRIVASI", style = MaterialTheme.typography.labelSmall.copy(color = NettraColors.Muted, fontSize = 10.sp, letterSpacing = 1.sp), modifier = Modifier.padding(vertical = 8.dp))
+                            MenuRowAndroid(icon = Icons.Filled.Shield, title = "Laporan Forensik", subtitle = "${vm.activeTab.blocked} tracker • ${if (vm.activeTab.secure) "HTTPS" else "HTTP"}", onClick = { vm.toggleMenu(false); vm.togglePrivacy(true) })
+                            Spacer(Modifier.height(8.dp))
+                            MenuRowAndroid(icon = Icons.Filled.Whatshot, title = "Bakar Sesi", subtitle = "Hapus cookie & cache • bookmark aman", ember = true, onClick = { vm.toggleMenu(false); vm.requestFire() })
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        item {
+                            Text("TENTANG", style = MaterialTheme.typography.labelSmall.copy(color = NettraColors.Muted, fontSize = 10.sp, letterSpacing = 1.sp), modifier = Modifier.padding(vertical = 8.dp))
+                            MenuRowAndroid(icon = Icons.Filled.Home, title = "Riwayat & Bookmark", subtitle = "Lihat yang tersimpan", onClick = { vm.toggleMenu(false) })
+                            Spacer(Modifier.height(8.dp))
+                            MenuRowAndroid(icon = Icons.Filled.Menu, title = "Pengaturan", subtitle = "DuckDuckGo default • HTTPS-First", onClick = { vm.toggleMenu(false) })
+                        }
                     }
                 }
             }
@@ -440,10 +461,23 @@ private fun AndroidTabSwitcher(tabs: List<TabState>, activeId: Long, onSwitch: (
 }
 
 @Composable
-private fun MenuRow(label: String, ember: Boolean = false, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (ember) NettraColors.Burn.copy(alpha = 0.12f) else NettraColors.Bg).border(1.dp, if (ember) NettraColors.Burn else NettraColors.Border, RoundedCornerShape(12.dp)).clickable { onClick() }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(if (ember) Icons.Filled.Whatshot else Icons.Filled.Home, contentDescription = null, tint = if (ember) NettraColors.Burn else NettraColors.Muted, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium.copy(color = if (ember) NettraColors.Burn else NettraColors.Text))
+private fun MenuRowAndroid(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, ember: Boolean = false, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (ember) NettraColors.Burn.copy(alpha = 0.08f) else NettraColors.Bg).border(1.dp, if (ember) NettraColors.Burn.copy(alpha = 0.3f) else NettraColors.Border, RoundedCornerShape(12.dp)).clickable { onClick() }.padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(if (ember) NettraColors.Burn.copy(alpha = 0.15f) else NettraColors.Surface2), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = if (ember) NettraColors.Burn else NettraColors.Muted, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (ember) NettraColors.Burn else NettraColors.Text))
+            Text(subtitle, style = MaterialTheme.typography.labelSmall.copy(color = NettraColors.Muted, fontSize = 11.sp))
+        }
+        Text("›", style = MaterialTheme.typography.bodyLarge.copy(color = NettraColors.Muted, fontSize = 18.sp))
     }
+}
+@Composable
+private fun MenuRow(label: String, ember: Boolean = false, onClick: () -> Unit) {
+    MenuRowAndroid(icon = if (ember) Icons.Filled.Whatshot else Icons.Filled.Home, title = label, subtitle = if (ember) "Hapus sesi" else "", onClick = onClick)
 }
