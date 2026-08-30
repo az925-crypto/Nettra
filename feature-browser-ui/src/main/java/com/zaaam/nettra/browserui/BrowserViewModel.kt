@@ -33,19 +33,23 @@ class BrowserViewModel(
 ) : ViewModel() {
 
     init {
-        // Load persisted tabs if DB available — FR-3 persist
+        // Load persisted tabs if DB available — FR-3 persist, avoid race overwriting newTab
         if (tabDao != null) {
             viewModelScope.launch {
                 try {
                     val persisted = tabDao.getAll()
                     if (persisted.isNotEmpty()) {
-                        val mapped = persisted.reversed().map { e ->
-                            TabState(id = e.id, title = e.title, url = e.url, isPrivate = e.isPrivate)
+                        // Only overwrite if still initial state (no user tab yet) to avoid race
+                        val isInitial = tabs.size == 1 && tabs[0].id == 1L && tabs[0].url.isEmpty() && tabs[0].title == "Tab baru"
+                        if (isInitial) {
+                            val mapped = persisted.reversed().map { e ->
+                                TabState(id = e.id, title = e.title, url = e.url, query = e.query, type = e.type, blocked = e.blocked, grade = e.grade, secure = e.secure, isPrivate = e.isPrivate)
+                            }
+                            tabs = mapped
+                            activeId = mapped.first().id
+                            nextId = (mapped.maxOfOrNull { it.id } ?: 0) + 1
+                            addressInput = activeTab.let { if (it.url.startsWith("https://duckduckgo.com")) it.query else it.url }
                         }
-                        tabs = mapped
-                        activeId = mapped.first().id
-                        nextId = (mapped.maxOfOrNull { it.id } ?: 0) + 1
-                        addressInput = activeTab.let { if (it.url.startsWith("https://duckduckgo.com")) it.query else it.url }
                     }
                 } catch (_: Exception) { }
             }
@@ -106,7 +110,7 @@ class BrowserViewModel(
         // Persist if DB available
         tabDao?.let { dao ->
             viewModelScope.launch {
-                try { dao.insert(TabEntity(id = t.id, url = t.url, title = t.title, isPrivate = t.isPrivate)) } catch (_: Exception) { }
+                try { dao.insert(TabEntity(id = t.id, url = t.url, title = t.title, isPrivate = t.isPrivate, type = t.type, query = t.query, blocked = t.blocked, grade = t.grade, secure = t.secure)) } catch (_: Exception) { }
             }
         }
     }
@@ -155,6 +159,30 @@ class BrowserViewModel(
         tabs = tabs.toMutableList().also { it[idx] = newTab }
         addressInput = if (newTab.type == "results") newTab.query else newTab.url
         showPrivacy = false
+        // Persist navigate state
+        tabDao?.let { dao ->
+            viewModelScope.launch {
+                try {
+                    dao.updateTab(newTab.id, newTab.url, newTab.title, newTab.type, newTab.query, newTab.blocked, newTab.grade, newTab.secure)
+                    // If update affected 0 rows (tab not yet persisted), insert
+                    val existing = dao.getAll().find { it.id == newTab.id }
+                    if (existing == null) {
+                        dao.insert(TabEntity(id = newTab.id, url = newTab.url, title = newTab.title, isPrivate = newTab.isPrivate, type = newTab.type, query = newTab.query, blocked = newTab.blocked, grade = newTab.grade, secure = newTab.secure))
+                    }
+                } catch (_: Exception) {
+                    try { dao.insert(TabEntity(id = newTab.id, url = newTab.url, title = newTab.title, isPrivate = newTab.isPrivate, type = newTab.type, query = newTab.query, blocked = newTab.blocked, grade = newTab.grade, secure = newTab.secure)) } catch (_: Exception) { }
+                }
+            }
+        }
+        // History persist for FR-3
+        historyDao?.let { dao ->
+            viewModelScope.launch {
+                try {
+                    val title = newTab.title.takeIf { it.isNotEmpty() } ?: newTab.url
+                    if (newTab.url.isNotEmpty()) dao.insert(com.zaaam.nettra.tabs.HistoryEntity(url = newTab.url, title = title))
+                } catch (_: Exception) { }
+            }
+        }
     }
 
     fun upgradeToHttps() {
@@ -162,8 +190,14 @@ class BrowserViewModel(
         if (cur.url.startsWith("http://", true)) {
             val https = cur.url.replaceFirst("http://", "https://", true)
             val idx = tabs.indexOfFirst { it.id == activeId }
-            tabs = tabs.toMutableList().also { it[idx] = cur.copy(url = https, title = extractHost(https), type = "site", secure = true, grade = "A", blocked = 1) }
+            val updated = cur.copy(url = https, title = extractHost(https), type = "site", secure = true, grade = "A", blocked = 1)
+            tabs = tabs.toMutableList().also { it[idx] = updated }
             addressInput = https
+            tabDao?.let { dao ->
+                viewModelScope.launch {
+                    try { dao.updateTab(updated.id, updated.url, updated.title, updated.type, updated.query, updated.blocked, updated.grade, updated.secure) } catch (_: Exception) { }
+                }
+            }
         }
     }
 
@@ -171,8 +205,14 @@ class BrowserViewModel(
         val idx = tabs.indexOfFirst { it.id == activeId }
         if (idx == -1) return
         val cur = tabs[idx]
-        tabs = tabs.toMutableList().also { it[idx] = cur.copy(blocked = cur.blocked + 1) }
+        val updated = cur.copy(blocked = cur.blocked + 1)
+        tabs = tabs.toMutableList().also { it[idx] = updated }
         blockedTotal += 1
+        tabDao?.let { dao ->
+            viewModelScope.launch {
+                try { dao.updateTab(updated.id, updated.url, updated.title, updated.type, updated.query, updated.blocked, updated.grade, updated.secure) } catch (_: Exception) { }
+            }
+        }
     }
 
     fun requestFire() { showFireDialog = true }

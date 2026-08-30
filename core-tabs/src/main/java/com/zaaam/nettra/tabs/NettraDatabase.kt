@@ -29,6 +29,8 @@ interface TabDao {
     @Insert suspend fun insert(t: TabEntity)
     @Query("DELETE FROM tabs WHERE id = :id") suspend fun deleteById(id: Long)
     @Query("DELETE FROM tabs") suspend fun clearAll()
+    @Query("UPDATE tabs SET url=:url, title=:title, type=:type, query=:query, blocked=:blocked, grade=:grade, secure=:secure WHERE id=:id")
+    suspend fun updateTab(id: Long, url: String, title: String, type: String, query: String, blocked: Int, grade: String, secure: Boolean)
 }
 
 @Database(entities = [BookmarkEntity::class, HistoryEntity::class, TabEntity::class], version = 1, exportSchema = true)

@@ -9,6 +9,11 @@ data class TabEntity(
     val url: String,
     val title: String,
     val isPrivate: Boolean = false,
+    val type: String = "newtab",
+    val query: String = "",
+    val blocked: Int = 0,
+    val grade: String = "A",
+    val secure: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
 )
 
