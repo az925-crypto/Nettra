@@ -9,72 +9,46 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// BUNKER HUD — Tactical OLED (Android native, not web paper)
+// Android-native 2026 — Expressive + OLED, bukan website paper
 object NettraColors {
-    val VoidBlack = Color(0xFF06080B) // 60% true OLED
-    val Bunker = Color(0xFF1A1D21) // surface
-    val BunkerRaised = Color(0xFF23262D) // surfaceContainerHigh
-    val GhostAsh = Color(0xFF9AA0A8) // onSurfaceVariant
-    val GhostWhite = Color(0xFFF2F3F5) // onSurface
-    val SignalLime = Color(0xFFD6FF2A) // 10% single hue — secure signal
-    val SignalLimeDim = Color(0xFFE9FF8A)
-    val AlertEmber = Color(0xFFFF3B30) // destructive <2%
-    val Border = Color(0x1FFFFFFF) // 12% white
-    val BorderStrong = Color(0xFF2A3036)
+    val Bg = Color(0xFF0A0E14) // OLED
+    val Surface = Color(0xFF121821)
+    val Surface2 = Color(0xFF1A232F)
+    val Surface3 = Color(0xFF1E2D3D)
+    val Text = Color(0xFFE6EDF3)
+    val Muted = Color(0xFF8B9AB0)
+    val Dim = Color(0xFF5C6B82)
+    val Lime = Color(0xFFD6FF2A) // single accent 2026 — signal
+    val LimeDim = Color(0xFFE9FF8A)
+    val Burn = Color(0xFFFF3B30)
+    val Border = Color(0x1FFFFFFF)
 }
 
-private val provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = emptyList()
-)
-private val SpaceGrotesk = GoogleFont("Space Grotesk")
-private val InstrumentSans = GoogleFont("Instrument Sans")
-private val JetBrainsMono = GoogleFont("JetBrains Mono")
-
-val NettraFontSpace = FontFamily(
-    Font(googleFont = SpaceGrotesk, fontProvider = provider, weight = FontWeight.Bold),
-    Font(googleFont = SpaceGrotesk, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = SpaceGrotesk, fontProvider = provider)
-)
-val NettraFontInstrument = FontFamily(
-    Font(googleFont = InstrumentSans, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = InstrumentSans, fontProvider = provider)
-)
-val NettraFontMono = FontFamily(
-    Font(googleFont = JetBrainsMono, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = JetBrainsMono, fontProvider = provider, weight = FontWeight.Bold)
-)
-
 private val NettraTypography = Typography(
-    displayLarge = TextStyle(fontFamily = NettraFontSpace, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 32.sp, letterSpacing = (-0.5).sp),
-    displayMedium = TextStyle(fontFamily = NettraFontSpace, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 26.sp),
-    titleLarge = TextStyle(fontFamily = NettraFontInstrument, fontWeight = FontWeight.Medium, fontSize = 18.sp, lineHeight = 22.sp),
-    titleMedium = TextStyle(fontFamily = NettraFontInstrument, fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 20.sp),
-    bodyLarge = TextStyle(fontFamily = NettraFontInstrument, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
-    bodySmall = TextStyle(fontFamily = NettraFontInstrument, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, color = NettraColors.GhostAsh),
-    labelSmall = TextStyle(fontFamily = NettraFontMono, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 0.8.sp),
-    labelMedium = TextStyle(fontFamily = NettraFontMono, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.2.sp)
+    displayLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, lineHeight = 28.sp, letterSpacing = (-0.5).sp),
+    titleLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 22.sp),
+    titleMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 20.sp),
+    bodyLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
+    bodySmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp, color = NettraColors.Muted),
+    labelSmall = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 0.8.sp),
+    labelMedium = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 0.6.sp)
 )
 
 private val NettraColorScheme = darkColorScheme(
-    background = NettraColors.VoidBlack,
-    surface = NettraColors.VoidBlack,
-    surfaceContainer = NettraColors.Bunker,
-    surfaceContainerHigh = NettraColors.BunkerRaised,
-    primary = NettraColors.SignalLime,
-    onPrimary = NettraColors.VoidBlack,
-    onBackground = NettraColors.GhostWhite,
-    onSurface = NettraColors.GhostWhite,
-    onSurfaceVariant = NettraColors.GhostAsh,
+    background = NettraColors.Bg,
+    surface = NettraColors.Bg,
+    surfaceContainer = NettraColors.Surface,
+    surfaceContainerHigh = NettraColors.Surface2,
+    primary = NettraColors.Lime,
+    onPrimary = NettraColors.Bg,
+    onBackground = NettraColors.Text,
+    onSurface = NettraColors.Text,
+    onSurfaceVariant = NettraColors.Muted,
     outlineVariant = NettraColors.Border,
-    secondary = NettraColors.GhostAsh,
-    error = NettraColors.AlertEmber
+    error = NettraColors.Burn
 )
 
 @Composable
@@ -83,10 +57,10 @@ fun NettraTheme(content: @Composable () -> Unit) {
         colorScheme = NettraColorScheme,
         typography = NettraTypography,
         shapes = MaterialTheme.shapes.copy(
-            extraLarge = RoundedCornerShape(32.dp),
-            large = RoundedCornerShape(24.dp),
-            medium = RoundedCornerShape(14.dp),
-            small = RoundedCornerShape(12.dp)
+            extraLarge = RoundedCornerShape(24.dp),
+            large = RoundedCornerShape(16.dp),
+            medium = RoundedCornerShape(12.dp),
+            small = RoundedCornerShape(8.dp)
         ),
         content = content
     )
