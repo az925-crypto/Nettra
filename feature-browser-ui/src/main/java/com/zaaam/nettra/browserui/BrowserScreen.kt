@@ -250,12 +250,12 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth().background(NettraColors.Bg)) {
                     if (activeTab.type == "newtab") {
                         AnimatedContent(
-                            targetState = activeTab,
+                            targetState = activeTab.id,
                             transitionSpec = {
                                 (slideInVertically(tween(220, delayMillis = 20)) + fadeIn(tween(220))) togetherWith (slideOutVertically(tween(180)) + fadeOut(tween(180)))
                             },
                             label = "tabContent"
-                        ) { tab ->
+                        ) {
                             AndroidNewTab(blockedTotal = vm.blockedTotal, version = vm.trackerBlocker.version, onChip = { q -> vm.onAddressChange(q); vm.navigate(q) }, onDemo = vm::navigate)
                         }
                     } else {
