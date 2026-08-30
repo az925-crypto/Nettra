@@ -33,7 +33,7 @@ interface TabDao {
     suspend fun updateTab(id: Long, url: String, title: String, type: String, query: String, blocked: Int, grade: String, secure: Boolean)
 }
 
-@Database(entities = [BookmarkEntity::class, HistoryEntity::class, TabEntity::class], version = 2, exportSchema = true, autoMigrations = [androidx.room.AutoMigration(from = 1, to = 2)])
+@Database(entities = [BookmarkEntity::class, HistoryEntity::class, TabEntity::class], version = 1, exportSchema = true)
 abstract class NettraDatabase : RoomDatabase() {
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun historyDao(): HistoryDao
