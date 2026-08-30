@@ -22,25 +22,31 @@ body{font-family:system-ui,sans-serif;background:#000;color:var(--paper);min-hei
 .pill input{flex:1;background:transparent;border:none;outline:none;color:var(--paper);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
 .pill input::placeholder{color:var(--muted);font-weight:500}
 .chips{display:flex;gap:8px;padding:0 16px 8px;overflow-x:auto;scrollbar-width:none}
-.chip{padding:6px 12px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;border:1px solid var(--border);display:flex;align-items:center;gap:6px;font-family:'Space Grotesk',sans-serif}
-.chip.active{background:var(--lime);color:var(--bg);border-color:var(--lime)}
+.chip{padding:6px 12px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;border:1px solid var(--border);display:flex;align-items:center;gap:6px;font-family:'Space Grotesk',sans-serif;transition:all .22s cubic-bezier(.2,.8,.2,1)}
+.chip.active{background:var(--lime);color:var(--bg);border-color:var(--lime);transform:translateY(-1px);box-shadow:0 2px 8px rgba(214,255,42,.2)}
 .chip:not(.active){background:var(--surface2);color:var(--muted)}
+.chip:active{transform:scale(.96)}
 .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
 .viewport{flex:1;overflow:hidden;position:relative;background:var(--bg);display:flex;flex-direction:column}
-.view{flex:1;overflow:auto;display:none;flex-direction:column}
+.view{flex:1;overflow:auto;display:none;flex-direction:column;animation:slideUp .28s cubic-bezier(.2,.8,.2,1)}
 .view.active{display:flex}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px}
 .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer}
 .btn.paper{background:var(--paper);color:var(--bg)}
 .btn.lime{background:var(--lime);color:var(--bg);border-color:var(--lime)}
 .navbar{height:80px;background:var(--surface);border-top:1px solid var(--border);border-radius:24px 24px 0 0;display:flex;align-items:center;justify-content:space-around;padding:0 8px}
-.navitem{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;min-width:48px}
-.navitem i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:14px}
-.navitem.active i{background:var(--lime);color:var(--bg)}
+.navitem{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;min-width:48px;transition:transform .15s}
+.navitem:active{transform:scale(.92)}
+.navitem i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:14px;transition:all .2s}
+.navitem.active i{background:var(--lime);color:var(--bg);transform:scale(1.05)}
 .navitem:not(.active) i{color:var(--muted)}
-.navitem span{font-family:'Space Grotesk',sans-serif;font-size:9px;letter-spacing:.04em;color:var(--muted)}
+.navitem span{font-family:'Space Grotesk',sans-serif;font-size:9px;letter-spacing:.04em;color:var(--muted);transition:color .2s}
 .navitem.active span{color:var(--lime)}
-.vault{width:48px;height:48px;border-radius:50%;background:var(--bg);border:2px solid var(--lime);display:grid;place-items:center;box-shadow:0 0 12px rgba(214,255,42,.3);cursor:pointer}
+.vault{width:52px;height:52px;border-radius:50%;background:var(--lime);border:1px solid var(--bg);display:grid;place-items:center;box-shadow:0 0 0 2px var(--lime),0 4px 12px rgba(214,255,42,.3);cursor:pointer;transition:transform .15s cubic-bezier(.34,1.56,.64,1)}
+.vault:active{transform:scale(.92)}
+.vault span{font-size:22px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 .sheet{position:absolute;left:0;right:0;bottom:80px;background:var(--surface);border-top:1px solid var(--border);border-radius:24px 24px 0 0;transform:translateY(110%);transition:.3s;max-height:70%;overflow:auto;z-index:10}
 .sheet.open{transform:translateY(0)}
 .grid{position:absolute;inset:0;background:rgba(10,14,20,.92);backdrop-filter:blur(6px);display:none;z-index:12;padding:16px}

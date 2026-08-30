@@ -1,8 +1,20 @@
 package com.zaaam.nettra.browserui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -140,8 +152,11 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                             selected = false,
                             onClick = vm::requestFire,
                             icon = {
+                                val interaction = remember { MutableInteractionSource() }
+                                val pressed by interaction.collectIsPressedAsState()
+                                val scale by animateFloatAsState(if (pressed) 0.92f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
                                 Box(
-                                    modifier = Modifier.size(52.dp).clip(CircleShape).background(NettraColors.Lime).border(1.dp, NettraColors.Bg, CircleShape),
+                                    modifier = Modifier.size(52.dp).clip(CircleShape).background(NettraColors.Lime).border(1.dp, NettraColors.Bg, CircleShape).scale(scale),
                                     contentAlignment = Alignment.Center
                                 ) { Icon(Icons.Filled.Whatshot, contentDescription = "Fire", tint = NettraColors.Bg, modifier = Modifier.size(24.dp)) }
                             },
@@ -214,14 +229,22 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                         Box(modifier = Modifier.size(32.dp).clip(CircleShape).border(1.dp, NettraColors.Border, CircleShape).clickable { vm.newTab() }, contentAlignment = Alignment.Center) { Text("+", color = NettraColors.Muted, fontWeight = FontWeight.Bold) }
                     }
                 }
-                // Content — Android-native LazyColumn, not web paper
+                // Content — AnimatedContent biar tidak kaku (spring)
                 Box(modifier = Modifier.weight(1f).fillMaxWidth().background(NettraColors.Bg)) {
-                    when (activeTab.type) {
-                        "newtab" -> AndroidNewTab(blockedTotal = vm.blockedTotal, version = vm.trackerBlocker.version, onChip = { q -> vm.onAddressChange(q); vm.navigate(q) }, onDemo = vm::navigate)
-                        "results" -> AndroidResults(query = activeTab.query, onOpen = vm::navigate)
-                        "site" -> AndroidSite(tab = activeTab, onTrackerClick = { vm.togglePrivacy(true) })
-                        "http" -> AndroidHttpWarning(url = activeTab.url, onUpgrade = vm::upgradeToHttps)
-                        else -> AndroidNewTab(vm.blockedTotal, vm.trackerBlocker.version, { q -> vm.onAddressChange(q); vm.navigate(q) }, vm::navigate)
+                    AnimatedContent(
+                        targetState = activeTab,
+                        transitionSpec = {
+                            (slideInVertically(tween(220, delayMillis = 20)) + fadeIn(tween(220))) togetherWith (slideOutVertically(tween(180)) + fadeOut(tween(180)))
+                        },
+                        label = "tabContent"
+                    ) { tab ->
+                        when (tab.type) {
+                            "newtab" -> AndroidNewTab(blockedTotal = vm.blockedTotal, version = vm.trackerBlocker.version, onChip = { q -> vm.onAddressChange(q); vm.navigate(q) }, onDemo = vm::navigate)
+                            "results" -> AndroidResults(query = tab.query, onOpen = vm::navigate)
+                            "site" -> AndroidSite(tab = tab, onTrackerClick = { vm.togglePrivacy(true) })
+                            "http" -> AndroidHttpWarning(url = tab.url, onUpgrade = vm::upgradeToHttps)
+                            else -> AndroidNewTab(vm.blockedTotal, vm.trackerBlocker.version, { q -> vm.onAddressChange(q); vm.navigate(q) }, vm::navigate)
+                        }
                     }
                 }
             }
