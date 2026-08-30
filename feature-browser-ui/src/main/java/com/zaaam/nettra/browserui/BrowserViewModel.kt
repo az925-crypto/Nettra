@@ -48,6 +48,7 @@ class BrowserViewModel(
                             tabs = mapped
                             activeId = mapped.first().id
                             nextId = (mapped.maxOfOrNull { it.id } ?: 0) + 1
+                            blockedTotal = mapped.sumOf { it.blocked } + 1284 // recompute from persisted + base
                             addressInput = activeTab.let { if (it.url.startsWith("https://duckduckgo.com")) it.query else it.url }
                         }
                     }
@@ -174,22 +175,25 @@ class BrowserViewModel(
                 }
             }
         }
-        // History persist for FR-3
-        historyDao?.let { dao ->
-            viewModelScope.launch {
-                try {
-                    val title = newTab.title.takeIf { it.isNotEmpty() } ?: newTab.url
-                    if (newTab.url.isNotEmpty()) dao.insert(com.zaaam.nettra.tabs.HistoryEntity(url = newTab.url, title = title))
-                } catch (_: Exception) { }
+        // History persist for FR-3 — skip private tabs (FR-8)
+        if (!newTab.isPrivate) {
+            historyDao?.let { dao ->
+                viewModelScope.launch {
+                    try {
+                        val title = newTab.title.takeIf { it.isNotEmpty() } ?: newTab.url
+                        if (newTab.url.isNotEmpty()) dao.insert(com.zaaam.nettra.tabs.HistoryEntity(url = newTab.url, title = title))
+                    } catch (_: Exception) { }
+                }
             }
         }
     }
 
     fun upgradeToHttps() {
-        val cur = activeTab
+        val cur = tabs.find { it.id == activeId } ?: return
         if (cur.url.startsWith("http://", true)) {
             val https = cur.url.replaceFirst("http://", "https://", true)
             val idx = tabs.indexOfFirst { it.id == activeId }
+            if (idx == -1) return
             val updated = cur.copy(url = https, title = extractHost(https), type = "site", secure = true, grade = "A", blocked = 1)
             tabs = tabs.toMutableList().also { it[idx] = updated }
             addressInput = https
