@@ -27,7 +27,7 @@ jobs:
       - name: Grant execute
         run: chmod +x gradlew
 
-      - name: Build release APK & AAB — notes.txt selalu build release
+      - name: "Build release APK and AAB - notes.txt selalu build release"
         run: ./gradlew --stacktrace assembleRelease bundleRelease
 
       - name: Upload to GitHub Release
