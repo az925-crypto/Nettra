@@ -260,7 +260,7 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                         }
                     } else {
                         // Real WebView — 100% fungsional FR-1,2,4,5
-                        val webViewClient = remember(activeTab.id) {
+                        val client = remember(activeTab.id) {
                             NettraWebViewClient(
                                 trackerBlocker = vm.trackerBlocker,
                                 onTrackerBlocked = { _: String -> vm.onTrackerBlocked() },
@@ -276,11 +276,11 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                                     settings.allowContentAccess = false
                                     settings.allowFileAccessFromFileURLs = false
                                     settings.allowUniversalAccessFromFileURLs = false
-                                    webViewClient = webViewClient
+                                    webViewClient = client
                                 }
                             },
                             update = { wv ->
-                                wv.webViewClient = webViewClient
+                                wv.webViewClient = client
                                 if (wv.url != activeTab.url && activeTab.url.isNotEmpty()) {
                                     wv.loadUrl(activeTab.url)
                                 }
