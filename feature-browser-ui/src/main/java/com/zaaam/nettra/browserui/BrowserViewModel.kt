@@ -12,6 +12,7 @@ import com.zaaam.nettra.search.SearchRouter
 import com.zaaam.nettra.tabs.FireWiper
 import com.zaaam.nettra.tabs.HistoryDao
 import com.zaaam.nettra.tabs.TabDao
+import com.zaaam.nettra.tabs.TabEntity
 import kotlinx.coroutines.launch
 
 data class TabState(
