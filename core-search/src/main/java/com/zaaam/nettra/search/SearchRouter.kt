@@ -10,7 +10,7 @@ import java.net.URLEncoder
 object SearchRouter {
 
     private const val DDG_SEARCH_BASE = "https://duckduckgo.com/?q="
-    private const val DDG_SOURCE_PARAM = "&t=nettra"
+    private const val DDG_SOURCE_PARAM = "" // hapus &t=nettra — fix ERR_SSL_VERSION_OR_CIPHER_MISMATCH FR-2
 
     /**
      * Very conservative URL detection to avoid misclassifying queries as URLs.

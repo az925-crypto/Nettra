@@ -1,5 +1,7 @@
 package com.zaaam.nettra.webview
 
+import android.net.http.SslError
+import android.webkit.SslErrorHandler
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -44,5 +46,11 @@ class NettraWebViewClient(
             }
         }
         return false
+    }
+
+    override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+        // FR-2 SSL fix: jangan proceed diam-diam, batalkan dan biarkan WebView tampilkan error page sistem
+        // Ini mencegah ERR_SSL_VERSION_OR_CIPHER_MISMATCH blank tanpa info
+        handler?.cancel()
     }
 }
