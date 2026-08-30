@@ -12,8 +12,8 @@ android {
         applicationId = "com.zaaam.nettra"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.0.7"
+        versionCode = 1
+        versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -21,7 +21,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            isMinifyEnabled = false // signed fresh biar bisa install (debug cert) — ganti ke true + keystore release nanti
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             isMinifyEnabled = false
