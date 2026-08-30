@@ -263,8 +263,8 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                         val webViewClient = remember(activeTab.id) {
                             NettraWebViewClient(
                                 trackerBlocker = vm.trackerBlocker,
-                                onTrackerBlocked = { vm.onTrackerBlocked() },
-                                onHttpsUpgrade = { https -> vm.onAddressChange(https) }
+                                onTrackerBlocked = { _: String -> vm.onTrackerBlocked() },
+                                onHttpsUpgrade = { https: String -> vm.onAddressChange(https) }
                             )
                         }
                         AndroidView(

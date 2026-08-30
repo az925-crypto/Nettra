@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":core-tabs"))
     implementation(project(":core-search"))
     implementation(project(":core-privacy"))
+    implementation(project(":core-webview"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtimeCompose)
