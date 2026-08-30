@@ -48,7 +48,7 @@ class BrowserViewModel(
                             tabs = mapped
                             activeId = mapped.first().id
                             nextId = (mapped.maxOfOrNull { it.id } ?: 0) + 1
-                            blockedTotal = mapped.sumOf { it.blocked } + 1284 // recompute from persisted + base
+                            blockedTotal = mapped.sumOf { it.blocked }
                             addressInput = activeTab.let { if (it.url.startsWith("https://duckduckgo.com")) it.query else it.url }
                         }
                     }
@@ -82,7 +82,7 @@ class BrowserViewModel(
     private var nextId = 2L
     var addressInput by mutableStateOf("")
         private set
-    var blockedTotal by mutableStateOf(1284)
+    var blockedTotal by mutableStateOf(0)
         private set
     var showPrivacy by mutableStateOf(false)
         private set
@@ -118,8 +118,11 @@ class BrowserViewModel(
 
     fun closeTab(id: Long) {
         if (tabs.size == 1) return
+        val closed = tabs.find { it.id == id } ?: return
         val wasActive = activeId == id
         tabs = tabs.filter { it.id != id }
+        blockedTotal -= closed.blocked
+        if (blockedTotal < 0) blockedTotal = 0
         if (wasActive) {
             activeId = tabs.last().id
             addressInput = activeTab.let { if (it.url.startsWith("https://duckduckgo.com")) it.query else it.url }
@@ -145,17 +148,19 @@ class BrowserViewModel(
             // HTTPS-First: if http, keep as http type to show warning (FR-5)
             if (url.startsWith("http://", true)) {
                 newTab = cur.copy(url = url, title = url, type = "http", secure = false, grade = "C", blocked = 0)
+                blockedTotal = blockedTotal - cur.blocked + 0
             } else {
                 val isShop = url.contains("shop")
                 val isNews = url.contains("news") || url.contains("berita")
                 val blocked = when { isShop -> 9; isNews -> 7; url.contains("duckduckgo") -> 2; else -> 3 }
                 val grade = if (blocked > 6) "B" else "A"
-                blockedTotal += blocked
+                blockedTotal = blockedTotal - cur.blocked + blocked
                 newTab = cur.copy(url = url, title = extractHost(url), type = "site", blocked = blocked, grade = grade, secure = true)
             }
         } else {
             val ddg = SearchRouter.buildSearchUrl(input)
             newTab = cur.copy(url = ddg, query = input, title = "\"$input\" — DuckDuckGo", type = "results", blocked = 2, grade = "A", secure = true)
+            blockedTotal = blockedTotal - cur.blocked + 2
         }
         tabs = tabs.toMutableList().also { it[idx] = newTab }
         addressInput = if (newTab.type == "results") newTab.query else newTab.url
@@ -195,6 +200,7 @@ class BrowserViewModel(
             val idx = tabs.indexOfFirst { it.id == activeId }
             if (idx == -1) return
             val updated = cur.copy(url = https, title = extractHost(https), type = "site", secure = true, grade = "A", blocked = 1)
+            blockedTotal = blockedTotal - cur.blocked + 1
             tabs = tabs.toMutableList().also { it[idx] = updated }
             addressInput = https
             tabDao?.let { dao ->
