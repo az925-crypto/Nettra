@@ -28,6 +28,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.width
@@ -40,6 +43,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.viewinterop.AndroidView
 import com.zaaam.nettra.webview.NettraWebViewClient
 import androidx.compose.ui.draw.scale
@@ -88,6 +94,7 @@ import androidx.compose.material.icons.filled.Whatshot
 fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
     val activeTab by remember { derivedStateOf { vm.activeTab } }
     val tabCount by remember { derivedStateOf { vm.tabs.size } }
+    var fullscreenView by remember { mutableStateOf<View?>(null) }
 
     NettraTheme {
         Scaffold(
@@ -251,34 +258,69 @@ fun BrowserScreen(vm: BrowserViewModel = viewModel()) {
                     if (activeTab.type == "newtab") {
                         AndroidNewTab(blockedTotal = vm.blockedTotal, version = vm.trackerBlocker.version, onChip = { q -> vm.onAddressChange(q); vm.navigate(q) }, onDemo = vm::navigate)
                     } else {
-                        // Real WebView — 100% fungsional FR-1,2,4,5
-                        val client = remember(activeTab.id) {
+                        // Scope ke id+url saja — blocked counter JANGAN trigger recomposition WebView (smooth scroll canyoublockit)
+                        val tabId = activeTab.id
+                        val tabUrl = activeTab.url
+                        val client = remember(tabId) {
                             NettraWebViewClient(
                                 trackerBlocker = vm.trackerBlocker,
                                 onTrackerBlocked = { _: String -> vm.onTrackerBlocked() },
                                 onHttpsUpgrade = { https: String -> vm.onAddressChange(https) }
                             )
                         }
-                        AndroidView(
-                            factory = { ctx ->
-                                WebView(ctx).apply {
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    settings.allowFileAccess = false
-                                    settings.allowContentAccess = false
-                                    settings.allowFileAccessFromFileURLs = false
-                                    settings.allowUniversalAccessFromFileURLs = false
-                                    webViewClient = client
+                        val chromeClient = remember(tabId) {
+                            object : WebChromeClient() {
+                                private var customView: View? = null
+                                override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                                    customView = view
+                                    fullscreenView = view
                                 }
-                            },
-                            update = { wv ->
-                                wv.webViewClient = client
-                                if (wv.url != activeTab.url && activeTab.url.isNotEmpty()) {
-                                    wv.loadUrl(activeTab.url)
+                                override fun onHideCustomView() {
+                                    customView = null
+                                    fullscreenView = null
                                 }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
+                                override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
+                                    // Popup — buka tab baru jika ada URL, else tolak eksplisit
+                                    val href = view?.url
+                                    if (href != null) vm.navigate(href)
+                                    return false // tolak handled, jangan biarkan WebView stuck
+                                }
+                            }
+                        }
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AndroidView(
+                                factory = { ctx ->
+                                    WebView(ctx).apply {
+                                        settings.javaScriptEnabled = true
+                                        settings.domStorageEnabled = true
+                                        settings.allowFileAccess = false
+                                        settings.allowContentAccess = false
+                                        settings.allowFileAccessFromFileURLs = false
+                                        settings.allowUniversalAccessFromFileURLs = false
+                                        settings.setSupportMultipleWindows(true)
+                                        settings.javaScriptCanOpenWindowsAutomatically = false
+                                        webViewClient = client
+                                        webChromeClient = chromeClient
+                                    }
+                                },
+                                update = { wv ->
+                                    // Hanya update url/client jika id/url berubah — bukan blocked count
+                                    if (wv.url != tabUrl && tabUrl.isNotEmpty()) {
+                                        wv.loadUrl(tabUrl)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            // Fullscreen overlay
+                            if (fullscreenView != null) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(Color.Black).clickable { (chromeClient as WebChromeClient).onHideCustomView() },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AndroidView(factory = { fullscreenView as View }, modifier = Modifier.fillMaxSize())
+                                }
+                            }
+                        }
                     }
                 }
             }

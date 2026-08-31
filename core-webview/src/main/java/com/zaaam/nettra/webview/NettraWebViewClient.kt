@@ -54,14 +54,28 @@ class NettraWebViewClient(
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val url = request?.url?.toString() ?: return false
+        val uri = request.url
+        val scheme = uri.scheme?.lowercase() ?: return false
         // HTTPS-First enforce: upgrade http to https and block cleartext (case-insensitive)
-        if (url.startsWith("http://", ignoreCase = true)) {
+        if (scheme == "http") {
             val https = url.replaceFirst("http://", "https://", ignoreCase = true)
             if (https != url) {
                 onHttpsUpgrade(https)
                 view?.loadUrl(https)
                 return true
             }
+        }
+        // Handle non-http(s) schemes via Intent (tel:, mailto:, intent:, etc.)
+        if (scheme != "http" && scheme != "https") {
+            try {
+                val ctx = view?.context ?: return true
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
+                // Cek ada app yang bisa handle
+                if (intent.resolveActivity(ctx.packageManager) != null) {
+                    ctx.startActivity(intent)
+                }
+            } catch (_: Exception) { }
+            return true // cegah WebView coba load sendiri dan stuck
         }
         return false
     }
