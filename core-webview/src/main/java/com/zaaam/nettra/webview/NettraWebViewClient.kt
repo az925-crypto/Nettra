@@ -42,6 +42,7 @@ class NettraWebViewClient(
         if (trackerBlocker?.shouldBlock(url, null) == true) {
             // Double-check first-party via host equality (sudah di atas), tapi untuk suffix match tetap perlu host check
             // shouldBlock dengan pageUrl null akan hanya suffix-match; kita sudah allow host equality di atas
+            android.util.Log.d("NettraWebViewClient", "BLOCKED $url host=$requestHost pageHost=$currentPageHost")
             onTrackerBlocked(url)
             // Return empty response to block — request never leaves device for tracker
             return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))

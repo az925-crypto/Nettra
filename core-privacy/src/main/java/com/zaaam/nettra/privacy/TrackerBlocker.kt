@@ -19,9 +19,11 @@ class TrackerBlocker(
             if (pageHost != null && host == pageHost) return false
         }
         // We do simple suffix match for tracker domains (third-party only)
-        return blocklist.trackers.any { tracker ->
+        val blocked = blocklist.trackers.any { tracker ->
             host == tracker.domain || host.endsWith(".${tracker.domain}")
         }
+        if (blocked) android.util.Log.d("TrackerBlocker", "BLOCKED $requestUrl host=$host")
+        return blocked
     }
 
     val version: String get() = blocklist.version

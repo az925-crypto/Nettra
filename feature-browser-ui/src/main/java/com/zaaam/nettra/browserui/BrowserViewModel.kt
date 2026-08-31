@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.zaaam.nettra.privacy.BlocklistSnapshot
 import com.zaaam.nettra.privacy.TrackerBlocker
 import com.zaaam.nettra.privacy.TrackerEntry
+import android.util.Log
+import com.zaaam.nettra.privacy.PrivacyReport
 import com.zaaam.nettra.search.SearchRouter
 import com.zaaam.nettra.tabs.FireWiper
 import com.zaaam.nettra.tabs.HistoryDao
@@ -147,20 +149,25 @@ class BrowserViewModel(
             if (!url.startsWith("http://", true) && !url.startsWith("https://", true)) url = "https://$url"
             // HTTPS-First: if http, keep as http type to show warning (FR-5)
             if (url.startsWith("http://", true)) {
-                newTab = cur.copy(url = url, title = url, type = "http", secure = false, grade = "C", blocked = 0)
-                blockedTotal = blockedTotal - cur.blocked + 0
-            } else {
-                val isShop = url.contains("shop")
-                val isNews = url.contains("news") || url.contains("berita")
-                val blocked = when { isShop -> 9; isNews -> 7; url.contains("duckduckgo") -> 2; else -> 3 }
-                val grade = if (blocked > 6) "B" else "A"
+                val blocked = 0
+                val secure = false
+                val grade = PrivacyReport.gradeFor(blocked, secure)
+                newTab = cur.copy(url = url, title = url, type = "http", secure = secure, grade = grade, blocked = blocked)
                 blockedTotal = blockedTotal - cur.blocked + blocked
-                newTab = cur.copy(url = url, title = extractHost(url), type = "site", blocked = blocked, grade = grade, secure = true)
+            } else {
+                val blocked = 0
+                val secure = true
+                val grade = PrivacyReport.gradeFor(blocked, secure)
+                blockedTotal = blockedTotal - cur.blocked + blocked
+                newTab = cur.copy(url = url, title = extractHost(url), type = "site", blocked = blocked, grade = grade, secure = secure)
             }
         } else {
             val ddg = SearchRouter.buildSearchUrl(input)
-            newTab = cur.copy(url = ddg, query = input, title = "\"$input\" — DuckDuckGo", type = "results", blocked = 2, grade = "A", secure = true)
-            blockedTotal = blockedTotal - cur.blocked + 2
+            val blocked = 0
+            val secure = true
+            val grade = PrivacyReport.gradeFor(blocked, secure)
+            newTab = cur.copy(url = ddg, query = input, title = "\"$input\" — DuckDuckGo", type = "results", blocked = blocked, grade = grade, secure = secure)
+            blockedTotal = blockedTotal - cur.blocked + blocked
         }
         tabs = tabs.toMutableList().also { it[idx] = newTab }
         addressInput = if (newTab.type == "results") newTab.query else newTab.url
@@ -199,8 +206,11 @@ class BrowserViewModel(
             val https = cur.url.replaceFirst("http://", "https://", true)
             val idx = tabs.indexOfFirst { it.id == activeId }
             if (idx == -1) return
-            val updated = cur.copy(url = https, title = extractHost(https), type = "site", secure = true, grade = "A", blocked = 1)
-            blockedTotal = blockedTotal - cur.blocked + 1
+            val blocked = 0
+            val secure = true
+            val grade = PrivacyReport.gradeFor(blocked, secure)
+            val updated = cur.copy(url = https, title = extractHost(https), type = "site", secure = secure, grade = grade, blocked = blocked)
+            blockedTotal = blockedTotal - cur.blocked + blocked
             tabs = tabs.toMutableList().also { it[idx] = updated }
             addressInput = https
             tabDao?.let { dao ->
@@ -215,9 +225,12 @@ class BrowserViewModel(
         val idx = tabs.indexOfFirst { it.id == activeId }
         if (idx == -1) return
         val cur = tabs[idx]
-        val updated = cur.copy(blocked = cur.blocked + 1)
+        val blocked = cur.blocked + 1
+        val grade = PrivacyReport.gradeFor(blocked, cur.secure)
+        val updated = cur.copy(blocked = blocked, grade = grade)
         tabs = tabs.toMutableList().also { it[idx] = updated }
         blockedTotal += 1
+        Log.d("Nettra", "Tracker blocked: ${cur.url} -> blocked=$blocked grade=$grade")
         tabDao?.let { dao ->
             viewModelScope.launch {
                 try { dao.updateTab(updated.id, updated.url, updated.title, updated.type, updated.query, updated.blocked, updated.grade, updated.secure) } catch (_: Exception) { }
